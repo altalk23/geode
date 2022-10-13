@@ -4,7 +4,8 @@
 
 #ifdef GEODE_IS_WINDOWS
 
-#include <Geode/Geode.hpp>
+#include <Geode/utils/casts.hpp>
+#include <Geode/utils/file.hpp>
 
 #include "../crashlog.hpp"
 #include <Windows.h>
@@ -293,7 +294,7 @@ static LONG WINAPI exceptionHandler(LPEXCEPTION_POINTERS info) {
             << "Please submit this crash report to its developer ("
             << faultyMod->getDeveloper() << ") for assistance.\n";
     }
-    
+
     // geode info
     file << "\n== Geode Information ==\n";
     printGeodeInfo(file);

@@ -92,8 +92,8 @@ class AudioEffectsLayer {
 }
 
 class BoomListView : cocos2d::CCLayer, TableViewDelegate, TableViewDataSource {
-    inline BoomListView() {}
-    inline ~BoomListView() {
+    BoomListView() {}
+    ~BoomListView() {
         CC_SAFE_RELEASE(m_entries);
     }
 
@@ -4121,6 +4121,8 @@ class PlayLayer : GJBaseGameLayer, CCCircleWaveDelegate, CurrencyRewardDelegate,
     static PlayLayer* get() {
         return GameManager::sharedState()->getPlayLayer();
     }
+
+    PlayLayer() = win 0x1FAA90;
 
     void addCircle(CCCircleWave*) = mac 0x7e0f0, win 0x0, ios 0x0;
     void addObject(GameObject*) = mac 0x70e50, win 0x2017e0, ios 0x0;

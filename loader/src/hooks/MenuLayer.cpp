@@ -1,5 +1,4 @@
-#include <Geode/Geode.hpp>
-#include <Geode/utils/WackyGeodeMacros.hpp>
+#include <Geode/utils/cocos.hpp>
 #include <Geode/ui/BasedButtonSprite.hpp>
 #include <Geode/ui/Notification.hpp>
 #include <Index.hpp>
@@ -8,7 +7,6 @@
 #include <InternalMod.hpp>
 #include "../ui/internal/info/ModInfoLayer.hpp"
 #include <InternalLoader.hpp>
-#include <Geode/Modify.hpp>
 
 USE_GEODE_NAMESPACE();
 
@@ -28,42 +26,6 @@ static void addUpdateIcon(const char* icon = "updates-available.png"_spr) {
 		updateIcon->setZOrder(99);
 		updateIcon->setScale(.5f);
 		g_geodeButton->addChild(updateIcon);
-	}
-}
-
-static void updateModsProgress(
-	UpdateStatus status,
-	std::string const& info,
-	uint8_t progress
-) {
-	if (status == UpdateStatus::Failed) {
-		g_indexUpdateNotif->hide();
-		g_indexUpdateNotif = nullptr;
-		NotificationBuilder()
-			.title("Some Updates Failed")
-			.text("Some mods failed to update, click for details")
-			.icon("info-alert.png"_spr)
-			.clicked([info](auto) -> void {
-				FLAlertLayer::create("Info", info, "OK")->show();
-			})
-			.show();
-		addUpdateIcon("updates-failed.png"_spr);
-	}
-
-	if (status == UpdateStatus::Finished) {
-		g_indexUpdateNotif->hide();
-		g_indexUpdateNotif = nullptr;
-		NotificationBuilder()
-			.title("Updates Installed")
-			.text(
-				"Mods have been updated, please "
-				"restart to apply changes"
-			)
-			.icon("updates-available.png"_spr)
-			.clicked([info](auto) -> void {
-				FLAlertLayer::create("Info", info, "OK")->show();
-			})
-			.show();
 	}
 }
 
@@ -87,49 +49,20 @@ static void updateIndexProgress(
 		g_indexUpdateNotif->hide();
 		g_indexUpdateNotif = nullptr;
 		if (Index::get()->areUpdatesAvailable()) {
-			if (Mod::get()->getSettingValue<bool>("auto-update-mods")) {
-				auto ticket = Index::get()->installUpdates(updateModsProgress);
-				if (!ticket) {
-					NotificationBuilder()
-						.title("Unable to auto-update")
-						.text("Unable to update mods :(")
-						.icon("updates-failed.png"_spr)
-						.show();
-				} else {
-					g_indexUpdateNotif = NotificationBuilder()
-						.title("Installing updates")
-						.text("Installing updates...")
-						.clicked([ticket](auto) -> void {
-							createQuickPopup(
-								"Cancel Updates",
-								"Do you want to <cr>cancel</c> updates?",
-								"Don't Cancel", "Cancel Updates",
-								[ticket](auto, bool btn2) -> void {
-									if (g_indexUpdateNotif && btn2) {
-										ticket.value()->cancel();
-									}
-								}
-							);
-						}, false)
-						.loading()
-						.stay()
-						.show();
-				}
-			} else {
-				NotificationBuilder()
-					.title("Updates available")
-					.text("Some mods have updates available!")
-					.icon("updates-available.png"_spr)
-					.clicked([](auto) -> void {
-						ModListLayer::scene();
-					})
-					.show();
-			}
+			NotificationBuilder()
+				.title("Updates available")
+				.text("Some mods have updates available!")
+				.icon("updates-available.png"_spr)
+				.clicked([](auto) -> void {
+					ModListLayer::scene();
+				})
+				.show();
 			addUpdateIcon();
 		}
 	}
 }
 
+#include <Geode/modify/MenuLayer.hpp>
 class $modify(CustomMenuLayer, MenuLayer) {
 	void destructor() {
 		g_geodeButton = nullptr;
@@ -229,7 +162,7 @@ class $modify(CustomMenuLayer, MenuLayer) {
 
 		bottomMenu->alignItemsHorizontallyWithPadding(3.f);
 
-		CCARRAY_FOREACH_B_TYPE(bottomMenu->getChildren(), node, CCNode) {
+		for (auto node : CCArrayExt<CCNode>(bottomMenu->getChildren())) {
 			node->setPositionY(y);
 		}
 		if (chest) {
