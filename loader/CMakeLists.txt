@@ -81,14 +81,13 @@ if (GEODE_NO_UNDEFINED_VIRTUALS)
 	target_compile_definitions(${PROJECT_NAME} PUBLIC GEODE_NO_UNDEFINED_VIRTUALS)
 endif()
 
-if (NOT GEODE_DISABLE_CLI_CALLS)
-	# Package resources for UI
-	package_geode_resources(
-		${PROJECT_NAME}
-		${CMAKE_CURRENT_SOURCE_DIR}/resources
-		${GEODE_BIN_PATH}/nightly/resources
-	)
-endif()
+# Package resources for UI
+package_geode_resources_now(
+	${PROJECT_NAME}
+	${CMAKE_CURRENT_SOURCE_DIR}/resources
+	${GEODE_BIN_PATH}/nightly/resources
+	${CMAKE_CURRENT_SOURCE_DIR}/src/internal/resources.hpp
+)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
 	src/internal/
@@ -122,7 +121,7 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/UI.hpp"
 	# "${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/Bindings.hpp"
 	# "${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/Modify.hpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/cocos/cocos2dx/include/cocos2d.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/cocos/include/cocos2d.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/cocos/extensions/cocos-ext.h"
 )
 
