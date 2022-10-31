@@ -95,6 +95,8 @@ endif()
 if (PROJECT_IS_TOP_LEVEL)
 	add_subdirectory(loader)
 	target_link_libraries(${PROJECT_NAME} INTERFACE geode-loader)
+elseif (${GEODE_WINDOWS_STANDALONE})
+	target_precompile_headers(${PROJECT_NAME} INTERFACE "${GEODE_LOADER_PATH}/include/Geode/Geode.hpp")
 elseif(EXISTS ${GEODE_PLATFORM_BIN_PATH})
 	target_link_libraries(${PROJECT_NAME} INTERFACE "${GEODE_PLATFORM_BIN_PATH}")
 	target_precompile_headers(${PROJECT_NAME} INTERFACE

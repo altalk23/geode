@@ -98,10 +98,14 @@ namespace std {
     #define GEODE_VIRTUAL_CONSTEXPR
     #define GEODE_NOINLINE __declspec(noinline)
 
-    #ifdef GEODE_EXPORTING
-        #define GEODE_DLL __declspec(dllexport)
+    #ifdef GEODE_WINDOWS_STANDALONE
+        #define GEODE_DLL
     #else
-        #define GEODE_DLL __declspec(dllimport)
+        #ifdef GEODE_EXPORTING
+            #define GEODE_DLL __declspec(dllexport)
+        #else
+            #define GEODE_DLL __declspec(dllimport)
+        #endif
     #endif
 
     #define GEODE_API extern "C" __declspec(dllexport)
