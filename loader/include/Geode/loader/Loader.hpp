@@ -23,6 +23,7 @@ namespace geode {
     static constexpr std::string_view GEODE_CONFIG_DIRECTORY = "config";
     static constexpr std::string_view GEODE_TEMP_DIRECTORY = "temp";
     static constexpr std::string_view GEODE_MOD_EXTENSION = ".geode";
+    static constexpr std::string_view GEODE_INDEX_DIRECTORY = "index";
 
     class Mod;
     class Hook;
@@ -30,7 +31,7 @@ namespace geode {
     class VersionInfo;
 
     namespace modifier {
-        template <class, class, class>
+        template <class, class>
         class FieldIntermediate;
     }
 }
@@ -86,7 +87,7 @@ namespace geode {
 
         size_t getFieldIndexForClass(size_t hash);
 
-        template <class, class, class>
+        template <class, class>
         friend class modifier::FieldIntermediate;
 
         void updateResourcePaths();
