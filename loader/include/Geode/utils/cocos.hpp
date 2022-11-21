@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Ref.hpp"
+#include "casts.hpp"
 
 #include <Geode/DefaultInclude.hpp>
 #include <cocos2d.h>
@@ -169,6 +170,33 @@ namespace geode::cocos {
     GEODE_DLL cocos2d::CCNode* getChildByTagRecursive(cocos2d::CCNode* node, int tag);
 
     /**
+     *  Get first node that conforms to the predicate 
+     *  by traversing children recursively
+     * 
+     *  @param node Parent node
+     *  @param predicate Predicate used to evaluate nodes
+     * @return Child node if one is found, or null if 
+     * there is none
+     */
+    template <class Type = cocos2d::CCNode>
+    Type* findFirstChildRecursive(cocos2d::CCNode* node, std::function<bool(Type*)> predicate) {
+        if (cast::safe_cast<Type*>(node) && predicate(static_cast<Type*>(node)))
+            return static_cast<Type*>(node);
+
+        auto children = node->getChildren();
+        if (!children) return nullptr;
+
+        for (int i = 0; i < children->count(); ++i) {
+            auto newParent = static_cast<cocos2d::CCNode*>(children->objectAtIndex(i));
+            auto child = findFirstChildRecursive(newParent, predicate);
+            if (child)
+                return child;
+        }
+
+        return nullptr;
+    }
+
+    /**
      * Checks if a given file exists in CCFileUtils
      * search paths.
      * @param filename File to check
@@ -317,15 +345,20 @@ namespace geode::cocos {
         ~CCArrayExt() {}
 
         auto begin() {
+            if (!m_arr) {
+                return CCArrayIterator<T*>(nullptr);
+            }
             return CCArrayIterator<T*>(reinterpret_cast<T**>(m_arr->data->arr));
         }
 
         auto end() {
+            if (!m_arr) {
+                return CCArrayIterator<T*>(nullptr);
+            }
             return CCArrayIterator<T*>(reinterpret_cast<T**>(m_arr->data->arr) + m_arr->count());
         }
-
-        auto size() const {
-            return m_arr->count();
+        size_t size() const {
+            return m_arr ? m_arr->count() : 0;
         }
 
         T operator[](size_t index) {

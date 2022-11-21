@@ -1,4 +1,5 @@
 // geode additions to make stl containers easier
+// clang-format off
 class GDString {
     void winDtor() = win 0xf6e0;
     char const* winCStr() = win 0xf710;
@@ -15,7 +16,6 @@ class GDString {
     GDString& macAssign(GDString const&) = mac 0x489f9c;
     void macDestroy() = mac 0x489f78;
 }
-
 
 class AchievementBar : cocos2d::CCNodeRGBA {
     static AchievementBar* create(const char* title, const char* desc, const char* icon, bool quest) = mac 0x379f80, win 0x3b120, ios 0x1a4784;
@@ -830,6 +830,7 @@ class CountTriggerAction : cocos2d::CCNode {
     int m_targetCount;
     int m_targetID;
     bool m_activateGroup;
+    bool m_multiActivate;
 }
 
 class CreateGuidelinesLayer : FLAlertLayer, FLAlertLayerProtocol {
@@ -1103,6 +1104,17 @@ class EditorOptionsLayer {
 }
 
 class EditorPauseLayer : CCBlockLayer, FLAlertLayerProtocol {
+    static EditorPauseLayer* get() {
+        if (!EditorUI::get()) return nullptr;
+
+        auto editor = LevelEditorLayer::get();
+        for (auto i = 0; i < editor->getChildrenCount(); ++i) {
+            if (auto layer = cast::safe_cast<EditorPauseLayer*>(editor->getChildren()->objectAtIndex(i))) {
+                return layer;
+            }
+        }
+        return nullptr;
+    }
     static EditorPauseLayer* create(LevelEditorLayer* editor) {
         auto pRet = new EditorPauseLayer();
         if (pRet && pRet->init(editor)) {
@@ -1210,7 +1222,6 @@ class EditorUI : cocos2d::CCLayer, FLAlertLayerProtocol, ColorSelectDelegate, GJ
     void editObject2(cocos2d::CCObject* sender) = win 0x8d1b0;
     void editGroup(cocos2d::CCObject* sender) = win 0x8d720;
     void moveObjectCall(cocos2d::CCObject* sender) = mac 0x29830, win 0x8db30;
-    void moveObjectCall(EditCommand command) = win 0x8db30;
     void transformObjectCall(cocos2d::CCObject* sender) = mac 0x29860, win 0x8def0;
     void onDelete(cocos2d::CCObject* sender) = mac 0x1b3d0, win 0x7b8d0;
     void onDeleteSelected(cocos2d::CCObject* sender) = mac 0xb990, win 0x7bf50;
@@ -2103,6 +2114,14 @@ class GJGameLevel : cocos2d::CCNode {
     void dataLoaded(DS_Dictionary* dict) = mac 0x2922f0, win 0xbded0, ios 0x6fca4;
     GJDifficulty getAverageDifficulty() = win 0xbd9b0;
     gd::string getUnpackedLevelDescription() = win 0xbf890;
+
+    static GJGameLevel* getCurrent() {
+        auto playLayer = PlayLayer::get();
+        if (playLayer) return playLayer->m_level;
+        auto editorLayer = LevelEditorLayer::get();
+        if (editorLayer) return editorLayer->m_level;
+        return nullptr;
+    }
 
     cocos2d::CCDictionary* m_lastBuildSave;
     int m_levelIDRand;
@@ -3547,10 +3566,10 @@ class LevelCell : TableViewCell {
 }
 
 class LevelCommentDelegate {
-    virtual void loadCommentsFinished(cocos2d::CCArray *, const char*)  {}
-    virtual void loadCommentsFailed(const char*)  {}
+    virtual void loadCommentsFinished(cocos2d::CCArray*, char const*)  {}
+    virtual void loadCommentsFailed(char const*)  {}
     virtual void updateUserScoreFinished()  {}
-    virtual void setupPageInfo(gd::string, const char*)  {}
+    virtual void setupPageInfo(gd::string, char const*)  {}
 }
 
 class LevelDeleteDelegate {
@@ -3852,6 +3871,12 @@ class LevelSettingsObject : cocos2d::CCNode {
     static LevelSettingsObject* objectFromString(gd::string) = mac 0x945a0, win 0x16f440;
     void setupColorsFromLegacyMode(cocos2d::CCDictionary*) = mac 0xa6a30, win 0x170050;
 
+    static LevelSettingsObject* get() {
+        auto baseLayer = GJBaseGameLayer::get();
+        if (baseLayer) return baseLayer->m_levelSettings;
+        return nullptr;
+    }
+
     gd::string getSaveString() = mac 0x979c0, win 0x16ebf0;
 
     GJEffectManager* m_effectManager;
@@ -4032,7 +4057,7 @@ class MusicDownloadManager : cocos2d::CCNode, PlatformDownloadDelegate {
     cocos2d::CCDictionary* m_unknownDict;
     cocos2d::CCArray* m_handlers;
     cocos2d::CCDictionary* m_songsDict;
-    int m_unknown;
+    int m_priority;
 }
 
 class NumberInputDelegate {
@@ -4177,7 +4202,7 @@ class PlayLayer : GJBaseGameLayer, CCCircleWaveDelegate, CurrencyRewardDelegate,
         return GameManager::sharedState()->getPlayLayer();
     }
 
-    PlayLayer() = win 0x1FAA90;
+    PlayLayer() = mac 0x80e20, win 0x1faa90;
 
     void addCircle(CCCircleWave*) = mac 0x7e0f0;
     void addObject(GameObject*) = mac 0x70e50, win 0x2017e0;
@@ -5187,6 +5212,19 @@ class TableView : CCScrollLayerExt, CCScrollLayerExtDelegate {
     static TableView* create(TableViewDelegate*, TableViewDataSource*, cocos2d::CCRect) = mac 0x37eb30, win 0x30ed0;
     void reloadData() = mac 0x37f970, win 0x317e0;
 
+    virtual void onEnter() = mac 0x37ff30, ios 0x21dcac;
+    virtual void onExit() = mac 0x37ff40, ios 0x21dcb0;
+    virtual bool ccTouchBegan(cocos2d::CCTouch*, cocos2d::CCEvent*) = mac 0x380120, ios 0x21de24, win 0x31de0;
+    virtual void ccTouchMoved(cocos2d::CCTouch*, cocos2d::CCEvent*) = mac 0x380be0, ios 0x21e5e8;
+    virtual void ccTouchEnded(cocos2d::CCTouch*, cocos2d::CCEvent*) = mac 0x3809a0, ios 0x21e46c;
+    virtual void ccTouchCancelled(cocos2d::CCTouch*, cocos2d::CCEvent*) = mac 0x380b20, ios 0x21e580;
+    virtual void registerWithTouchDispatcher() = mac 0x37ff50, ios 0x21dcb4;
+    virtual void scrollWheel(float, float) = mac 0x380cd0, ios 0x21e6b4;
+    virtual void scrllViewWillBeginDecelerating(CCScrollLayerExt*) = mac 0x3818a0, ios 0x21efd4;
+    virtual void scrollViewDidEndDecelerating(CCScrollLayerExt*) = mac 0x3818c0, ios 0x21efdc;
+    virtual void scrollViewTouchMoving(CCScrollLayerExt*) = mac 0x3818e0, ios 0x21efe4;
+    virtual void scrollViewDidEndMoving(CCScrollLayerExt*) = mac 0x381900, ios 0x21efec;
+
     bool m_touchOutOfBoundary;
     cocos2d::CCTouch* m_touchStart;
     cocos2d::CCPoint m_touchStartPosition2;
@@ -5258,7 +5296,7 @@ class TeleportPortalObject : GameObject {
     bool m_teleportEase;
 }
 
-class TextAlertPopup {
+class TextAlertPopup : cocos2d::CCNode {
     static TextAlertPopup* create(gd::string const& text, float time, float scale) = win 0x1450b0;
 }
 
@@ -5270,7 +5308,7 @@ class TextArea : cocos2d::CCSprite {
     virtual void draw() {}
     virtual void setOpacity(unsigned char) = mac 0x19f760, win 0x33800;
     bool init(gd::string str, char const* font, float width, float height, cocos2d::CCPoint anchor, float scale, bool disableColor) = mac 0x19ec70, win 0x33370, ios 0x92444;
-    static TextArea* create(gd::string str, char const* font, float width, float height, cocos2d::CCPoint const& anchor, float scale, bool disableColor) = mac 0x19eb40, win 0x33270;
+    static TextArea* create(gd::string str, char const* font, float scale, float width, cocos2d::CCPoint anchor, float height, bool disableColor) = mac 0x19eb40, win 0x33270;
     void colorAllCharactersTo(cocos2d::ccColor3B color) = win 0x33830;
     void setString(gd::string str) = mac 0x19eda0, win 0x33480;
 
@@ -5369,4 +5407,4 @@ class VideoOptionsLayer : FLAlertLayer {
 class LevelTools {
     static gd::string base64DecodeString(gd::string) = mac 0x294510, win 0x18b3b0;
 }
-
+// clang-format on
