@@ -43,6 +43,14 @@ namespace gd {
             (void)this->winAssign(val.c_str(), val.size());
         }
 
+        template <class Param>
+        string& operator=(Params&& param) {
+            std::string val;
+            val = std::forward<Params>(param);
+            (void)this->winAssign(val.c_str(), val.size());
+            return *this;
+        }
+
         ~string() {
             (void)this->winDtor();
         }
