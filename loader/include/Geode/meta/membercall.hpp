@@ -7,11 +7,14 @@
 
 namespace geode::core::meta::x86 {
     template <class T>
-    concept MemberCallStructReturn = std::is_class_v<T> && sizeof(T) > 8;
+    concept MembercallStructReturn = std::is_class_v<T> && sizeof(T) > 8;
 
     template <class Ret, class... Args>
-    requires (!MemberCallStructReturn<Ret>)
-    class Membercall : public CallConv<Ret, Args...> {
+    class Membercall {};
+
+    template <class Ret, class... Args>
+    requires (!MembercallStructReturn<Ret>)
+    class Membercall<Ret, Args...> : public CallConv<Ret, Args...> {
     protected:
         // Metaprogramming / typedefs we need for the rest of the class.
         using MyConv = CallConv<Ret, Args...>;
@@ -189,7 +192,7 @@ namespace geode::core::meta::x86 {
     };
 
     template <class Ret, class Class, class... Args>
-    requires (MemberCallStructReturn<Ret>)
+    requires (MembercallStructReturn<Ret>)
     class Membercall<Ret, Class, Args...> {
     
     protected:
