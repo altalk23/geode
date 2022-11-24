@@ -212,7 +212,7 @@ namespace geode::core::meta::x86 {
         class Impl<std::index_sequence<to...>, std::index_sequence<from...>> {
         public:
             static Ret* invoke(void* address, Tuple<Class, Ret*, Args..., float, int> const& all) {
-                return reinterpret_cast<Ret(__vectorcall*)(
+                return reinterpret_cast<Ret*(__vectorcall*)(
                     typename Tuple<Class, Ret*, Args..., float, int>::template type_at<to>...
                 )>(address)(all.template at<to>()...);
             }
