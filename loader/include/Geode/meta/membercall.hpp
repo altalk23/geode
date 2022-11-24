@@ -185,8 +185,9 @@ namespace geode::core::meta::x86 {
     };
 
     template <class Ret, class Class, class... Args>
-    requires requires { std::is_class_v<Ret> && sizeof(Ret) > 8 && !std::is_pointer_v<Ret> && !std::is_reference_v<Ret>; }
-    class Membercall<Ret, Class, Args...> : public Membercall<Ret*, Class, Ret*, Args...> {
+    class Membercall<
+        std::enable_if_t<std::is_class_v<Ret> && sizeof(Ret) > 8, Ret>, Class, Args...
+    > : public Membercall<Ret*, Class, Ret*, Args...> {
     protected:
         using MyImpl = Membercall<Ret*, Class, Ret*, Args...>::MyImpl;
 
