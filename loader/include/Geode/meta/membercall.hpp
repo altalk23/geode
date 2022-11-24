@@ -8,11 +8,11 @@
 namespace geode::core::meta::x86 {
     template <class Ret, class... Args>
     class Membercall : public CallConv<Ret, Args...> {
-    private:
+    protected:
         // Metaprogramming / typedefs we need for the rest of the class.
         using MyConv = CallConv<Ret, Args...>;
 
-    private:
+    protected:
         class Sequences {
         private:
             // These are required for proper reordering.
@@ -131,7 +131,7 @@ namespace geode::core::meta::x86 {
             using from = typename MyConv::template arr_to_seq<from_arr>;
         };
 
-    private:
+    protected:
         // Where all the logic is actually implemented.
         template <class Class, class>
         class Impl {
@@ -163,7 +163,7 @@ namespace geode::core::meta::x86 {
             }
         };
 
-    private:
+    protected:
         // Putting it all together: instantiating Impl with our filters.
         using MyImpl = Impl<typename Sequences::to, typename Sequences::from>;
 
@@ -179,8 +179,19 @@ namespace geode::core::meta::x86 {
         }
 
         template <Ret (*detour)(Args...)>
-        static constexpr decltype(auto) get_wrapper() {
-            return &MyImpl::template wrapper<detour>;
+        static auto get_wrapper() {
+            return reinterpret_cast<void*>(&MyImpl::template wrapper<detour>);
+        }
+    };
+
+    template <class Ret, class Class, class... Args>
+    requires requires { std::is_class_v<Ret> && sizeof(Ret) > 8; }
+    class Membercall<Ret, Class, Args...> : public Membercall<Ret&, Class, Ret&, Args...> {
+    public:
+        static Ret invoke(void* address, Class inst, Args... all) {
+            Ret ret;
+            (void)MyImpl::invoke(address, { inst, ret, all..., 314.0f, 314 });
+            return ret;
         }
     };
 }
