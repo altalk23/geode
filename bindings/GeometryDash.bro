@@ -2,7 +2,6 @@
 // clang-format off
 class GDString {
     void winDtor() = win 0xf6e0;
-    char const* winCStr() = win 0xf710;
     GDString& winAssign(GDString const&, size_t, size_t) = win 0xf720;
     GDString& winAssign(char const*) = win 0xf680;
     GDString& winAssign(char const*, size_t) = win 0xf840;
@@ -1181,7 +1180,7 @@ class EditorUI : cocos2d::CCLayer, FLAlertLayerProtocol, ColorSelectDelegate, GJ
     CreateMenuItem* menuItemFromObjectString(gd::string, int) = mac 0x1e130, win 0x84d00;
     void moveObject(GameObject*, cocos2d::CCPoint) = mac 0x24b10, win 0x8ddb0;
     void onDuplicate(cocos2d::CCObject*) = mac 0x18ba0, win 0x87d20;
-    void onCreate() = mac 0x1b960, win 0x85680;
+    bool onCreate() = mac 0x1b960, win 0x85680;
     void onCreateObject(int) = mac 0x200d0, win 0x85750;
     cocos2d::CCArray* pasteObjects(gd::string) = mac 0x232d0, win 0x88240;
     void playerTouchBegan(cocos2d::CCTouch*, cocos2d::CCEvent*) = mac 0x2ebf0, win 0x90680;
