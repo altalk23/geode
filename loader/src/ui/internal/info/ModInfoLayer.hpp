@@ -55,6 +55,7 @@ protected:
     void onRepository(CCObject*);
     void onSupport(CCObject*);
     void onOpenConfigDir(CCObject*);
+    void onAdvancedSettings(CCObject*);
     void install();
     void uninstall();
     void updateInstallStatus(std::string const& status, uint8_t progress);
@@ -75,7 +76,7 @@ public:
 
     static void showIssueReportPopup(ModInfo const& info);
 
-    static CCNode* createLogoSpr(ModObject* modObj);
-    static CCNode* createLogoSpr(Mod* mod);
-    static CCNode* createLogoSpr(IndexItem const& item);
+    static CCNode* createLogoSpr(ModObject* modObj, CCSize const& size);
+    static CCNode* createLogoSpr(Mod* mod, CCSize const& size);
+    static CCNode* createLogoSpr(IndexItem const& item, CCSize const& size);
 };

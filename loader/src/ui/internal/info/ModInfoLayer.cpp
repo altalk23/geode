@@ -3,6 +3,8 @@
 #include "../dev/HookListLayer.hpp"
 #include "../list/ModListView.hpp"
 #include "../settings/ModSettingsPopup.hpp"
+#include "../settings/AdvancedSettingsPopup.hpp"
+#include <InternalLoader.hpp>
 
 #include <Geode/binding/ButtonSprite.hpp>
 #include <Geode/binding/CCTextInputNode.hpp>
@@ -16,7 +18,6 @@
 #include <Geode/ui/MDPopup.hpp>
 #include <Geode/utils/casts.hpp>
 #include <Geode/utils/ranges.hpp>
-#include <Geode/utils/vector.hpp>
 #include <InternalLoader.hpp>
 
 // TODO: die
@@ -143,8 +144,7 @@ bool ModInfoLayer::init(ModObject* obj, ModListView* list) {
     nameLabel->limitLabelWidth(200.f, .7f, .1f);
     m_mainLayer->addChild(nameLabel, 2);
 
-    auto logoSpr = this->createLogoSpr(obj);
-    logoSpr->setScale(logoSize / logoSpr->getContentSize().width);
+    auto logoSpr = this->createLogoSpr(obj, { logoSize, logoSize });
     m_mainLayer->addChild(logoSpr);
 
     auto developerStr = "by " + m_info.m_developer;
@@ -226,6 +226,7 @@ bool ModInfoLayer::init(ModObject* obj, ModListView* list) {
         m_buttonMenu->addChild(changelogBtn);
     }
 
+    // mod info
     auto infoSpr = CCSprite::createWithSpriteFrameName("GJ_infoIcon_001.png");
     infoSpr->setScale(.85f);
 
@@ -248,7 +249,10 @@ bool ModInfoLayer::init(ModObject* obj, ModListView* list) {
     }
 
     if (isInstalledMod) {
-        auto settingsSpr = CCSprite::createWithSpriteFrameName("GJ_optionsBtn_001.png");
+        // mod settings
+        auto settingsSpr = CCSprite::createWithSpriteFrameName(
+            "GJ_optionsBtn_001.png"
+        );
         settingsSpr->setScale(.65f);
 
         auto settingsBtn = CCMenuItemSpriteExtra::create(
@@ -318,9 +322,26 @@ bool ModInfoLayer::init(ModObject* obj, ModListView* list) {
             disableBtnSpr->setColor({ 150, 150, 150 });
         }
 
-        if (m_mod != Loader::get()->getInternalMod() && m_mod != Mod::get()) {
-            auto uninstallBtnSpr =
-                ButtonSprite::create("Uninstall", "bigFont.fnt", "GJ_button_05.png", .6f);
+        if (
+            m_mod != Loader::get()->getInternalMod() &&
+            m_mod != Mod::get()
+        ) {
+            // advanced settings
+            auto advSettSpr = CCSprite::createWithSpriteFrameName("GJ_optionsBtn02_001.png");
+            advSettSpr->setScale(.65f);
+
+            auto advSettBtn = CCMenuItemSpriteExtra::create(
+                advSettSpr, this, menu_selector(ModInfoLayer::onAdvancedSettings)
+            );
+            advSettBtn->setPosition(
+                infoBtn->getPositionX() - 30.f,
+                infoBtn->getPositionY()
+            );
+            m_buttonMenu->addChild(advSettBtn);
+
+            auto uninstallBtnSpr = ButtonSprite::create(
+                "Uninstall", "bigFont.fnt", "GJ_button_05.png", .6f
+            );
             uninstallBtnSpr->setScale(.6f);
 
             auto uninstallBtn = CCMenuItemSpriteExtra::create(
@@ -424,23 +445,21 @@ void ModInfoLayer::onEnableMod(CCObject* pSender) {
         return;
     }
     if (as<CCMenuItemToggler*>(pSender)->isToggled()) {
-        auto res = m_mod->load();
+        auto res = m_mod->loadBinary();
         if (!res) {
-            FLAlertLayer::create(nullptr, "Error Loading Mod", res.error(), "OK", nullptr)->show();
-        }
-        else {
-            auto res = m_mod->enable();
-            if (!res) {
-                FLAlertLayer::create(nullptr, "Error Enabling Mod", res.error(), "OK", nullptr)
-                    ->show();
-            }
+            FLAlertLayer::create(
+                nullptr, "Error Loading Mod",
+                res.unwrapErr(), "OK", nullptr
+            )->show();
         }
     }
     else {
         auto res = m_mod->disable();
         if (!res) {
-            FLAlertLayer::create(nullptr, "Error Disabling Mod", res.error(), "OK", nullptr)
-                ->show();
+            FLAlertLayer::create(
+                nullptr, "Error Disabling Mod",
+                res.unwrapErr(), "OK", nullptr
+            )->show();
         }
     }
     if (m_list) m_list->updateAllStates(nullptr);
@@ -454,9 +473,11 @@ void ModInfoLayer::onRepository(CCObject*) {
 void ModInfoLayer::onInstallMod(CCObject*) {
     auto ticketRes = Index::get()->installItem(Index::get()->getKnownItem(m_info.m_id));
     if (!ticketRes) {
-        return FLAlertLayer::create("Unable to install", ticketRes.error(), "OK")->show();
+        return FLAlertLayer::create(
+            "Unable to install", ticketRes.unwrapErr(), "OK"
+        )->show();
     }
-    m_installation = ticketRes.value();
+    m_installation = ticketRes.unwrap();
 
     createQuickPopup(
         "Install",
@@ -604,7 +625,9 @@ void ModInfoLayer::install() {
 void ModInfoLayer::uninstall() {
     auto res = m_mod->uninstall();
     if (!res) {
-        return FLAlertLayer::create("Uninstall failed :(", res.error(), "OK")->show();
+        return FLAlertLayer::create(
+            "Uninstall failed :(", res.unwrapErr(), "OK"
+        )->show();
     }
     auto layer = FLAlertLayer::create(
         this, "Uninstall complete",
@@ -638,6 +661,10 @@ void ModInfoLayer::onSettings(CCObject*) {
 void ModInfoLayer::onNoSettings(CCObject*) {
     FLAlertLayer::create("No Settings Found", "This mod has no customizable settings.", "OK")
         ->show();
+}
+
+void ModInfoLayer::onAdvancedSettings(CCObject*) {
+    AdvancedSettingsPopup::create(m_mod)->show();
 }
 
 void ModInfoLayer::onInfo(CCObject*) {
@@ -693,23 +720,25 @@ ModInfoLayer* ModInfoLayer::create(ModObject* obj, ModListView* list) {
     return nullptr;
 }
 
-CCNode* ModInfoLayer::createLogoSpr(ModObject* modObj) {
+CCNode* ModInfoLayer::createLogoSpr(ModObject* modObj, CCSize const& size) {
     switch (modObj->m_type) {
         case ModObjectType::Mod:
             {
-                return ModInfoLayer::createLogoSpr(modObj->m_mod);
+                return ModInfoLayer::createLogoSpr(modObj->m_mod, size);
             }
             break;
 
         case ModObjectType::Index:
             {
-                return ModInfoLayer::createLogoSpr(modObj->m_index);
+                return ModInfoLayer::createLogoSpr(modObj->m_index, size);
             }
             break;
 
         default:
             {
                 auto spr = CCSprite::createWithSpriteFrameName("no-logo.png"_spr);
+                spr->setScaleX(size.width / spr->getContentSize().width);
+                spr->setScaleY(size.height / spr->getContentSize().height);
                 if (!spr) {
                     return CCLabelBMFont::create("OwO", "goldFont.fnt");
                 }
@@ -719,22 +748,24 @@ CCNode* ModInfoLayer::createLogoSpr(ModObject* modObj) {
     }
 }
 
-CCNode* ModInfoLayer::createLogoSpr(Mod* mod) {
+CCNode* ModInfoLayer::createLogoSpr(Mod* mod, CCSize const& size) {
     CCNode* spr = nullptr;
     if (mod == Loader::getInternalMod()) {
         spr = CCSprite::createWithSpriteFrameName("geode-logo.png"_spr);
     }
     else {
         spr = CCSprite::create(
-            CCString::createWithFormat("%s/logo.png", mod->getID().c_str())->getCString()
+            fmt::format("{}/logo.png", mod->getID()).c_str()
         );
     }
     if (!spr) spr = CCSprite::createWithSpriteFrameName("no-logo.png"_spr);
     if (!spr) spr = CCLabelBMFont::create("OwO", "goldFont.fnt");
+    spr->setScaleX(size.width / spr->getContentSize().width);
+    spr->setScaleY(size.height / spr->getContentSize().height);
     return spr;
 }
 
-CCNode* ModInfoLayer::createLogoSpr(IndexItem const& item) {
+CCNode* ModInfoLayer::createLogoSpr(IndexItem const& item, CCSize const& size) {
     CCNode* spr = nullptr;
     auto logoPath = ghc::filesystem::absolute(item.m_path / "logo.png");
     spr = CCSprite::create(logoPath.string().c_str());
@@ -746,13 +777,25 @@ CCNode* ModInfoLayer::createLogoSpr(IndexItem const& item) {
     }
 
     if (Index::get()->isFeaturedItem(item.m_info.m_id)) {
+        auto glowSize = size + CCSize(4.f, 4.f);
+
         auto logoGlow = CCSprite::createWithSpriteFrameName("logo-glow.png"_spr);
+        logoGlow->setScaleX(glowSize.width / logoGlow->getContentSize().width);
+        logoGlow->setScaleY(glowSize.height / logoGlow->getContentSize().height);
+        
+        // i dont know why + 1 is needed and its too late for me to figure out why
         spr->setPosition(
             logoGlow->getContentSize().width / 2, logoGlow->getContentSize().height / 2
         );
-        logoGlow->setContentSize(spr->getContentSize());
+        // scary mathematics
+        spr->setScaleX(size.width / spr->getContentSize().width / logoGlow->getScaleX());
+        spr->setScaleY(size.height / spr->getContentSize().height / logoGlow->getScaleY());
         logoGlow->addChild(spr);
         spr = logoGlow;
+    }
+    else {
+        spr->setScaleX(size.width / spr->getContentSize().width);
+        spr->setScaleY(size.height / spr->getContentSize().height);
     }
 
     return spr;

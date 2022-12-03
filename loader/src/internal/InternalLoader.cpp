@@ -1,12 +1,3 @@
-#include "InternalLoader.hpp"
-
-#include "InternalMod.hpp"
-#include "resources.hpp"
-
-#include <Geode/loader/Loader.hpp>
-#include <Geode/loader/Log.hpp>
-#include <Geode/utils/fetch.hpp>
-#include <Geode/utils/file.hpp>
 #include <fmt/format.h>
 #include <hash.hpp>
 #include <iostream>
@@ -14,6 +5,16 @@
 #include <string>
 #include <thread>
 #include <vector>
+
+#include <Geode/loader/Loader.hpp>
+#include <Geode/loader/IPC.hpp>
+#include <Geode/loader/Log.hpp>
+#include <Geode/utils/web.hpp>
+#include <Geode/utils/file.hpp>
+
+#include "InternalLoader.hpp"
+#include "InternalMod.hpp"
+#include "resources.hpp"
 
 InternalLoader::InternalLoader() : Loader() {}
 
@@ -39,7 +40,34 @@ bool InternalLoader::setup() {
 
     log::log(Severity::Debug, InternalMod::get(), "Loaded hooks");
 
+    log::log(Severity::Debug, InternalMod::get(), "Setting up IPC...");
+
+    this->setupIPC();
+
     return true;
+}
+
+bool InternalLoader::isReadyToHook() const {
+    return m_readyToHook;
+}
+
+void InternalLoader::addInternalHook(Hook* hook, Mod* mod) {
+    m_internalHooks.push_back({hook, mod});
+}
+
+bool InternalLoader::loadHooks() {
+    m_readyToHook = true;
+    auto thereWereErrors = false;
+    for (auto const& hook : m_internalHooks) {
+        auto res = hook.second->addHook(hook.first);
+        if (!res) {
+            log::log(Severity::Error, hook.second, "{}", res.unwrapErr());
+            thereWereErrors = true;
+        }
+    }
+    // free up memory
+    m_internalHooks.clear();
+    return !thereWereErrors;
 }
 
 void InternalLoader::queueInGDThread(ScheduledFunction func) {
@@ -106,7 +134,7 @@ void InternalLoader::downloadLoaderResources(IndexUpdateCallback callback) {
             if (!unzip) {
                 if (callback)
                     callback(
-                        UpdateStatus::Failed, "Unable to unzip new resources: " + unzip.error(), 0
+                        UpdateStatus::Failed, "Unable to unzip new resources: " + unzip.unwrapErr(), 0
                     );
                 return;
             }
@@ -178,78 +206,35 @@ bool InternalLoader::verifyLoaderResources(IndexUpdateCallback callback) {
     return true;
 }
 
-#if defined(GEODE_IS_WINDOWS)
-void InternalLoader::platformMessageBox(char const* title, std::string const& info) {
-    MessageBoxA(nullptr, info.c_str(), title, MB_ICONERROR);
-}
+std::string InternalLoader::processRawIPC(void* rawHandle, std::string const& buffer) {
+    std::string reply;
 
-void InternalLoader::openPlatformConsole() {
-    if (m_platformConsoleOpen) return;
-    if (AllocConsole() == 0) return;
-    SetConsoleCP(CP_UTF8);
-    // redirect console output
-    freopen_s(reinterpret_cast<FILE**>(stdout), "CONOUT$", "w", stdout);
-    freopen_s(reinterpret_cast<FILE**>(stdin), "CONIN$", "r", stdin);
+    try {
+        std::optional<std::string> replyID = std::nullopt;
 
-    m_platformConsoleOpen = true;
-
-    for (auto const& log : Loader::get()->getLogs()) {
-        std::cout << log->toString(true) << "\n";
+        // parse received message
+        auto json = nlohmann::json::parse(buffer);
+        if (!json.contains("mod") || !json["mod"].is_string()) {
+            log::warn("Received IPC message without 'mod' field");
+            return reply;
+        }
+        if (!json.contains("message") || !json["message"].is_string()) {
+            log::warn("Received IPC message without 'message' field");
+            return reply;
+        }
+        if (json.contains("reply") && json["reply"].is_string()) {
+            replyID = json["reply"];
+        }
+        nlohmann::json data;
+        if (json.contains("data")) {
+            data = json["data"];
+        }
+        // log::debug("Posting IPC event");
+        // ! warning: if the event system is ever made asynchronous this will break!
+        IPCEvent(rawHandle, json["mod"], json["message"], data, &reply).post();
+    } catch(...) {
+        log::warn("Received IPC message that isn't valid JSON");
     }
+
+    return reply;
 }
-
-void InternalLoader::closePlatformConsole() {
-    if (!m_platformConsoleOpen) return;
-
-    fclose(stdin);
-    fclose(stdout);
-    FreeConsole();
-
-    m_platformConsoleOpen = false;
-}
-
-#elif defined(GEODE_IS_MACOS)
-    #include <CoreFoundation/CoreFoundation.h>
-
-void InternalLoader::platformMessageBox(char const* title, std::string const& info) {
-    CFStringRef cfTitle = CFStringCreateWithCString(NULL, title, kCFStringEncodingUTF8);
-    CFStringRef cfMessage = CFStringCreateWithCString(NULL, info.c_str(), kCFStringEncodingUTF8);
-
-    CFUserNotificationDisplayNotice(
-        0, kCFUserNotificationNoteAlertLevel, NULL, NULL, NULL, cfTitle, cfMessage, NULL
-    );
-}
-
-void InternalLoader::openPlatformConsole() {
-    m_platformConsoleOpen = true;
-
-    for (auto const& log : Loader::get()->getLogs()) {
-        std::cout << log->toString(true) << "\n";
-    }
-}
-
-void InternalLoader::closePlatformConsole() {
-    m_platformConsoleOpen = false;
-}
-
-#elif defined(GEODE_IS_IOS)
-
-    #include <pwd.h>
-    #include <sys/types.h>
-    #include <unistd.h>
-
-void InternalLoader::platformMessageBox(char const* title, std::string const& info) {
-    std::cout << title << ": " << info << std::endl;
-}
-
-void InternalLoader::openPlatformConsole() {
-    ghc::filesystem::path(getpwuid(getuid())->pw_dir);
-    freopen(
-        ghc::filesystem::path(utils::file::geodeRoot() / "geode_log.txt").string().c_str(), "w",
-        stdout
-    );
-    InternalLoader::m_platformConsoleOpen = true;
-}
-
-void InternalLoader::closePlatformConsole() {}
-#endif

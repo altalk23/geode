@@ -6,12 +6,14 @@
 #include <Geode/loader/Loader.hpp>
 #include <Geode/loader/Log.hpp>
 #include <Geode/utils/Result.hpp>
-#include <Geode/utils/json.hpp>
+#include <Geode/external/json/json.hpp>
+
 #include <mutex>
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <thread>
 
 USE_GEODE_NAMESPACE();
 
@@ -26,10 +28,16 @@ protected:
     bool m_platformConsoleOpen = false;
     std::unordered_set<std::string> m_shownInfoAlerts;
 
+    std::vector<std::pair<Hook*, Mod*>> m_internalHooks;
+    bool m_readyToHook;
+
     void saveInfoAlerts(nlohmann::json& json);
     void loadInfoAlerts(nlohmann::json& json);
 
     void downloadLoaderResources(IndexUpdateCallback callback);
+
+    bool loadHooks();
+    void setupIPC();
 
     InternalLoader();
     ~InternalLoader();
@@ -41,7 +49,7 @@ public:
 
     bool setup();
 
-    bool loadHooks();
+    static std::string processRawIPC(void* rawHandle, std::string const& buffer);
 
     /**
      * Check if a one-time event has been shown to the user,
@@ -60,6 +68,9 @@ public:
     static void platformMessageBox(char const* title, std::string const& info);
 
     bool verifyLoaderResources(IndexUpdateCallback callback);
+
+    bool isReadyToHook() const;
+    void addInternalHook(Hook* hook, Mod* mod);
 
     friend int geodeEntry(void* platformData);
 };

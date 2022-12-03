@@ -12,17 +12,17 @@ static ModInfo getInternalModInfo() {
     try {
         auto json = ModJson::parse(LOADER_MOD_JSON);
         auto infoRes = ModInfo::create(json);
-        if (infoRes.is_error()) {
+        if (infoRes.isErr()) {
             InternalLoader::platformMessageBox(
                 "Fatal Internal Error",
-                "Unable to parse loader mod.json: \"" + infoRes.error() +
+                "Unable to parse loader mod.json: \"" + infoRes.unwrapErr() +
                     "\"\n"
                     "This is a fatal internal error in the loader, please "
                     "contact Geode developers immediately!"
             );
             exit(1);
         }
-        auto info = infoRes.value();
+        auto info = infoRes.unwrap();
         info.m_details = LOADER_ABOUT_MD;
         info.m_supportInfo = SUPPORT_INFO;
         info.m_supportsDisabling = false;
@@ -45,12 +45,9 @@ InternalMod::InternalMod() : Mod(getInternalModInfo()) {
 
     ghc::filesystem::create_directories(m_saveDirPath);
 
-    // make sure spritesheets get added
-    m_addResourcesToSearchPath = true;
-
-    auto sett = this->loadSettings();
+    auto sett = this->loadData();
     if (!sett) {
-        log::log(Severity::Error, this, "{}", sett.error());
+        log::log(Severity::Error, this, "{}", sett.unwrapErr());
     }
 }
 
