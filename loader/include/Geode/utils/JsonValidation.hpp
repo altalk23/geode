@@ -1,7 +1,7 @@
 #pragma once
 
+#include "../external/json/json.hpp"
 #include "../loader/Log.hpp"
-#include "json.hpp"
 
 #include <set>
 #include <variant>
@@ -15,9 +15,7 @@ namespace geode {
 
     template <typename T>
     struct is_iterable<
-        T,
-        std::void_t<
-            decltype(std::begin(std::declval<T>())), decltype(std::end(std::declval<T>()))>> :
+        T, std::void_t<decltype(std::begin(std::declval<T>())), decltype(std::end(std::declval<T>()))>> :
         std::true_type {};
 
     template <typename T>
@@ -79,7 +77,7 @@ namespace geode {
     }
 
     template <class T>
-    using JsonValueValidator = bool (*)(T const&);
+    using JsonValueValidator = std::function<bool(T const&)>;
 
     template <class Json>
     struct JsonMaybeObject;
@@ -107,6 +105,7 @@ namespace geode {
         );
 
         GEODE_DLL bool isError() const;
+        GEODE_DLL std::string getError() const;
 
         GEODE_DLL operator bool() const;
     };
@@ -173,6 +172,11 @@ namespace geode {
                 );
             }
             return *this;
+        }
+
+        template <class T>
+        JsonMaybeValue<Json>& validate(bool (*validator)(T const&)) {
+            return this->validate(std::function(validator));
         }
 
         template <class T>

@@ -1,10 +1,7 @@
 #include <Geode/ui/TextRenderer.hpp>
 #include <Geode/utils/casts.hpp>
 #include <Geode/utils/cocos.hpp>
-#include <Geode/utils/operators.hpp>
 #include <Geode/utils/string.hpp>
-#undef max
-#undef min
 
 USE_GEODE_NAMESPACE();
 using namespace std::string_literals;

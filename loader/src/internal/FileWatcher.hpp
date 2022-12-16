@@ -1,8 +1,8 @@
 #pragma once
 
 #include <Geode/DefaultInclude.hpp>
-#include <Geode/utils/types.hpp>
-#include <fs/filesystem.hpp>
+#include <Geode/utils/general.hpp>
+#include <ghc/filesystem.hpp>
 #include <functional>
 #include <string>
 

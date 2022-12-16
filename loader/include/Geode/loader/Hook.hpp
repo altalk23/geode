@@ -1,8 +1,9 @@
 #pragma once
 
-#include <Geode/DefaultInclude.hpp>
-#include <Geode/hook-core/Hook.hpp>
-#include <Geode/utils/types.hpp>
+#include "../DefaultInclude.hpp"
+#include "../hook-core/Hook.hpp"
+#include "../utils/general.hpp"
+#include "../external/json/json.hpp"
 #include <inttypes.h>
 #include <string_view>
 
@@ -42,8 +43,15 @@ namespace geode {
         Hook(Hook const&) = delete;
         Hook operator=(Hook const&) = delete;
 
+        // Used by Mod
+        Result<> enable();
+        Result<> disable();
+
         friend class Mod;
         friend class Loader;
+
+        static std::vector<std::pair<Hook*, Mod*>> internalHooks;
+        static bool readyToHook;
 
     public:
         /**
@@ -77,14 +85,20 @@ namespace geode {
         Mod* getOwner() const {
             return m_owner;
         }
+
+        /**
+         * Get info about the hook as JSON
+         * @note For IPC
+         */
+        nlohmann::json getRuntimeInfo() const;
     };
 
     class GEODE_DLL Patch {
     protected:
         Mod* m_owner;
         void* m_address;
-        byte_array m_original;
-        byte_array m_patch;
+        ByteVector m_original;
+        ByteVector m_patch;
         bool m_applied;
 
         // Only allow friend classes to create
@@ -128,5 +142,11 @@ namespace geode {
         Mod* getOwner() const {
             return m_owner;
         }
+
+        /**
+         * Get info about the patch as JSON
+         * @note For IPC
+         */
+        nlohmann::json getRuntimeInfo() const;
     };
 }

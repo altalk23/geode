@@ -1,57 +1,180 @@
 #pragma once
 
 #include "Result.hpp"
-#include "types.hpp"
+#include "general.hpp"
 
+#include "../external/json/json.hpp"
 #include <Geode/DefaultInclude.hpp>
-#include <fs/filesystem.hpp>
+#include <ghc/filesystem.hpp>
 #include <string>
+#include <unordered_set>
+
+// allow converting ghc filesystem to json and back
+namespace ghc::filesystem {
+    void GEODE_DLL to_json(nlohmann::json& json, path const& path);
+    void GEODE_DLL from_json(nlohmann::json const& json, path& path);
+}
 
 namespace geode::utils::file {
-    [[deprecated("Use the ghc::filesystem::path version")]] GEODE_DLL Result<std::string>
-    readString(std::string const& path);
-    [[deprecated("Use the ghc::filesystem::path version")]] GEODE_DLL Result<std::string>
-    readString(std::wstring const& path);
     GEODE_DLL Result<std::string> readString(ghc::filesystem::path const& path);
-    [[deprecated("Use the ghc::filesystem::path version")]] GEODE_DLL Result<byte_array> readBinary(
-        std::string const& path
-    );
-    [[deprecated("Use the ghc::filesystem::path version")]] GEODE_DLL Result<byte_array> readBinary(
-        std::wstring const& path
-    );
-    GEODE_DLL Result<byte_array> readBinary(ghc::filesystem::path const& path);
+    GEODE_DLL Result<nlohmann::json> readJson(ghc::filesystem::path const& path);
+    GEODE_DLL Result<ByteVector> readBinary(ghc::filesystem::path const& path);
 
-    [[deprecated("Use the ghc::filesystem::path version")]] GEODE_DLL Result<> writeString(
-        std::string const& path, std::string const& data
-    );
-    [[deprecated("Use the ghc::filesystem::path version")]] GEODE_DLL Result<> writeString(
-        std::wstring const& path, std::string const& data
-    );
     GEODE_DLL Result<> writeString(ghc::filesystem::path const& path, std::string const& data);
-    [[deprecated("Use the ghc::filesystem::path version")]] GEODE_DLL Result<> writeBinary(
-        std::string const& path, byte_array const& data
-    );
-    [[deprecated("Use the ghc::filesystem::path version")]] GEODE_DLL Result<> writeBinary(
-        std::wstring const& path, byte_array const& data
-    );
-    GEODE_DLL Result<> writeBinary(ghc::filesystem::path const& path, byte_array const& data);
+    GEODE_DLL Result<> writeBinary(ghc::filesystem::path const& path, ByteVector const& data);
 
-    [[deprecated("Use the ghc::filesystem::path version")]] GEODE_DLL Result<> createDirectory(
-        std::string const& path
-    );
     GEODE_DLL Result<> createDirectory(ghc::filesystem::path const& path);
-    [[deprecated("Use the ghc::filesystem::path version")]] GEODE_DLL Result<> createDirectoryAll(
-        std::string const& path
-    );
     GEODE_DLL Result<> createDirectoryAll(ghc::filesystem::path const& path);
-    GEODE_DLL Result<std::vector<std::string>> listFiles(std::string const& path);
-    GEODE_DLL Result<std::vector<std::string>> listFilesRecursively(std::string const& path);
+    GEODE_DLL Result<std::vector<ghc::filesystem::path>> listFiles(
+        ghc::filesystem::path const& path, bool recursive = false
+    );
 
-    /**
-     * Unzip file to directory
-     * @param from File to unzip
-     * @param to Directory to unzip to
-     * @returns Ok on success, Error on error
-     */
-    GEODE_DLL Result<> unzipTo(ghc::filesystem::path const& from, ghc::filesystem::path const& to);
+    class GEODE_DLL Zip final {
+    public:
+        using Path = ghc::filesystem::path;
+
+    private:
+        class Impl;
+        std::unique_ptr<Impl> m_impl;
+        
+        Zip();
+        Zip(std::unique_ptr<Impl>&& impl);
+
+        Result<> addAllFromRecurse(
+            Path const& dir, Path const& entry
+        );
+    
+    public:
+        Zip(Zip const&) = delete;
+        Zip(Zip&& other);
+        ~Zip();
+
+        /**
+         * Create zipper for file
+         */
+        static Result<Zip> create(Path const& file);
+
+        /**
+         * Path to the opened zip
+         */
+        Path getPath() const;
+
+        /**
+         * Add an entry to the zip with data
+         */
+        Result<> add(Path const& entry, ByteVector const& data);
+        /**
+         * Add an entry to the zip with string data
+         */
+        Result<> add(Path const& entry, std::string const& data);
+        /**
+         * Add an entry to the zip from a file on disk. If you want to add the 
+         * file with a different name, read it into memory first and add it 
+         * with Zip::add
+         * @param file File on disk
+         * @param entryDir Folder to place the file in in the zip
+         */
+        Result<> addFrom(Path const& file, Path const& entryDir = Path());
+        /**
+         * Add an entry to the zip from a directory on disk
+         * @param entry Path in the zip
+         * @param dir Directory on disk
+         */
+        Result<> addAllFrom(Path const& dir);
+        /**
+         * Add a folder entry to the zip. If you want to add a folder from disk, 
+         * use Zip::addAllFrom
+         * @param entry Folder path in zip
+         */
+        Result<> addFolder(Path const& entry);
+    };
+
+    class GEODE_DLL Unzip final {
+    private:
+        class Impl;
+        std::unique_ptr<Impl> m_impl;
+
+        Unzip();
+        Unzip(std::unique_ptr<Impl>&& impl);
+
+    public:
+        Unzip(Unzip const&) = delete;
+        Unzip(Unzip&& other);
+        ~Unzip();
+
+        using Path = ghc::filesystem::path;
+
+        /**
+         * Create unzipper for file
+         */
+        static Result<Unzip> create(Path const& file);
+
+        /**
+         * Path to the opened zip
+         */
+        Path getPath() const;
+
+        /**
+         * Get all entries in zip
+         */
+        std::vector<Path> getEntries() const;
+        /**
+         * Check if zip has entry
+         * @param name Entry path in zip
+         */
+        bool hasEntry(Path const& name);
+
+        /**
+         * Extract entry to memory
+         * @param name Entry path in zip
+         */
+        Result<ByteVector> extract(Path const& name);
+        /**
+         * Extract entry to file
+         * @param name Entry path in zip
+         * @param path Target file path
+         */
+        Result<> extractTo(Path const& name, Path const& path);
+        /**
+         * Extract all entries to directory
+         * @param dir Directory to unzip the contents to
+         */
+        Result<> extractAllTo(Path const& dir);
+
+        /**
+         * Helper method for quickly unzipping a file
+         * @param from ZIP file to unzip
+         * @param to Directory to unzip to
+         * @param deleteZipAfter Whether to delete the zip after unzipping
+         * @returns Succesful result on success, errorful result on error
+         */
+        static Result<> intoDir(
+            Path const& from,
+            Path const& to,
+            bool deleteZipAfter = false
+        );
+    };
+
+    GEODE_DLL bool openFolder(ghc::filesystem::path const& path);
+
+    enum class PickMode {
+        OpenFile,
+        SaveFile,
+        OpenFolder,
+    };
+
+    struct FilePickOptions {
+        struct Filter {
+            // Name of the filter
+            std::string description;
+            // Extensions (*.txt, *.doc, *.mp3, etc.)
+            std::unordered_set<std::string> files;
+        };
+
+        ghc::filesystem::path defaultPath;
+        std::vector<Filter> filters;
+    };
+
+    GEODE_DLL Result<ghc::filesystem::path> pickFile(PickMode mode, FilePickOptions const& options);
+    GEODE_DLL Result<std::vector<ghc::filesystem::path>> pickFiles(FilePickOptions const& options);
 }

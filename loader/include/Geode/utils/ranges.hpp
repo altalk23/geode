@@ -3,23 +3,39 @@
 #include <Geode/DefaultInclude.hpp>
 #include <algorithm>
 #include <string>
+#include <concepts>
+#include <optional>
+#include <iterator>
 
-#undef min
-#undef max
+#ifndef __cpp_lib_concepts
+namespace std {
+    // <concepts> isn't working for me lmao
+    template <class From, class To>
+    concept convertible_to = std::is_convertible_v<From, To> && requires {
+        static_cast<To>(std::declval<From>());
+    };
+}
+#endif
 
 namespace geode::utils::ranges {
     template <class C>
     concept ValidConstContainer = requires(C const& c) {
         c.begin();
         c.end();
+        { c.size() } -> std::convertible_to<size_t>;
         typename C::value_type;
+        typename C::iterator;
+        typename C::const_iterator;
     };
 
     template <class C>
     concept ValidMutContainer = requires(C& c) {
         c.begin();
         c.end();
+        { c.size() } -> std::convertible_to<size_t>;
         typename C::value_type;
+        typename C::iterator;
+        typename C::const_iterator;
     };
 
     template <class C>
@@ -45,11 +61,63 @@ namespace geode::utils::ranges {
         return std::find_if(cont.begin(), cont.end(), fun) != cont.end();
     }
 
-    template <ValidConstContainer C, class Output>
+    template <ValidConstContainer C, ValidCUnaryPredicate<C> Predicate>
+    std::optional<typename C::value_type> find(C const& cont, Predicate fun) {
+        auto it = std::find_if(cont.begin(), cont.end(), fun);
+        if (it != cont.end()) {
+            return std::optional(*it);
+        }
+        return std::nullopt;
+    }
 
-    requires std::is_default_constructible_v<Output> &&
-        std::is_convertible_v<Output, typename C::value_type>
-            Output join(C const& cont, Output const& separator) {
+    template <ValidConstContainer C>
+    std::optional<size_t> indexOf(C const& cont, typename C::value_type const& elem) {
+        auto it = std::find(cont.begin(), cont.end(), elem);
+        if (it != cont.end()) {
+            return std::optional(std::distance(cont.begin(), it));
+        }
+        return std::nullopt;
+    }
+
+    template <ValidConstContainer C, ValidCUnaryPredicate<C> Predicate>
+    std::optional<size_t> indexOf(C const& cont, Predicate fun) {
+        auto it = std::find_if(cont.begin(), cont.end(), fun);
+        if (it != cont.end()) {
+            return std::optional(std::distance(cont.begin(), it));
+        }
+        return std::nullopt;
+    }
+
+    template <ValidMutContainer C>
+    bool move(C& cont, typename C::value_type const& elem, size_t where) {
+        if (where > cont.size() - 1) {
+            return false;
+        }
+        auto ix = indexOf(cont, elem);
+        if (ix) {
+            if (ix.value() > where) {
+                std::rotate(
+                    cont.rend() - ix.value() - 1,
+                    cont.rend() - ix.value(),
+                    cont.rend() - where
+                );
+            } else {
+                std::rotate(
+                    cont.begin() + ix.value(),
+                    cont.begin() + ix.value() + 1,
+                    cont.begin() + where + 1
+                );
+            }
+            return true;
+        }
+        return false;
+    }
+
+    template <ValidConstContainer C, class Output>
+        requires
+            std::is_default_constructible_v<Output> &&
+            std::is_convertible_v<Output, typename C::value_type>
+    Output join(C const& cont, Output const& separator) {
         auto res = Output();
         bool first = true;
         for (auto& p : cont) {
@@ -95,7 +163,7 @@ namespace geode::utils::ranges {
             else {
                 first = false;
             }
-            res += Conv(p);
+            res += converter(p);
         }
         return res;
     }
@@ -106,9 +174,32 @@ namespace geode::utils::ranges {
         return container;
     }
 
+    template <ValidContainer C>
+    C concat(C const& cont, typename C::value_type const& value) {
+        auto copy = cont;
+        copy.push_back(value);
+        return copy;
+    }
+
+    template <ValidContainer C>
+    C concat(C const& cont1, C const& cont2) {
+        auto copy = cont1;
+        ranges::push(copy, cont2);
+        return copy;
+    }
+
     template <ValidMutContainer C>
     C& remove(C& container, typename C::value_type const& value) {
         container.erase(std::remove(container.begin(), container.end(), value), container.end());
+        return container;
+    }
+
+    template <ValidMutContainer C, ValidCUnaryPredicate<C> Predicate>
+    C& remove(C& container, Predicate fun) {
+        container.erase(
+            std::remove_if(container.begin(), container.end(), fun),
+            container.end()
+        );
         return container;
     }
 
@@ -134,11 +225,11 @@ namespace geode::utils::ranges {
     }
 
     template <
-        ValidConstContainer From, ValidContainer Into,
+        ValidContainer Into, ValidConstContainer From,
         ValidIntoConverter<typename From::value_type, typename Into::value_type> Mapper>
     Into map(From const& from, Mapper mapper) {
         auto res = Into();
-        std::transform(from.begin(), from.end(), res.end(), mapper);
+        std::transform(from.begin(), from.end(), std::back_inserter(res), mapper);
         return res;
     }
 
@@ -193,5 +284,25 @@ namespace geode::utils::ranges {
             return T();
         }
         return member(*it);
+    }
+
+    template <ValidConstContainer C>
+    struct ConstReverseWrapper {
+        C const& iter;
+    };
+
+    template <ValidConstContainer C>
+    auto begin(ConstReverseWrapper<C> const& c) {
+        return std::rbegin(c.iter);
+    }
+
+    template <ValidConstContainer C>
+    auto end(ConstReverseWrapper<C> const& c) {
+        return std::rend(c.iter);
+    }
+
+    template <ValidConstContainer C>
+    ConstReverseWrapper<C> reverse(C const& iter) {
+        return { iter };
     }
 }

@@ -20,6 +20,11 @@ bool JsonMaybeSomething<Json>::isError() const {
 }
 
 template <class Json>
+std::string JsonMaybeSomething<Json>::getError() const {
+    return m_checker.getError();
+}
+
+template <class Json>
 JsonMaybeSomething<Json>::operator bool() const {
     return !isError();
 }
@@ -205,14 +210,12 @@ JsonMaybeValue<Json> JsonMaybeValue<Json>::at(size_t i) {
         return *this;
     }
     return JsonMaybeValue<Json>(
-        self().m_checker, self().m_json.at(i), self().m_hierarchy + "." + std::to_string(i),
-        self().m_hasValue
+        self().m_checker, self().m_json.at(i), self().m_hierarchy + "." + std::to_string(i), self().m_hasValue
     );
 }
 
 template <class Json>
-typename JsonMaybeValue<Json>::template Iterator<JsonMaybeValue<Json>> JsonMaybeValue<
-    Json>::iterate() {
+typename JsonMaybeValue<Json>::template Iterator<JsonMaybeValue<Json>> JsonMaybeValue<Json>::iterate() {
     this->as<value_t::array>();
     Iterator<JsonMaybeValue<Json>> iter;
     if (this->isError()) return iter;
@@ -226,8 +229,8 @@ typename JsonMaybeValue<Json>::template Iterator<JsonMaybeValue<Json>> JsonMaybe
 }
 
 template <class Json>
-typename JsonMaybeValue<Json>::template Iterator<std::pair<std::string, JsonMaybeValue<Json>>>
-JsonMaybeValue<Json>::items() {
+typename JsonMaybeValue<Json>::template Iterator<std::pair<std::string, JsonMaybeValue<Json>>> JsonMaybeValue<
+    Json>::items() {
     this->as<value_t::object>();
     Iterator<std::pair<std::string, JsonMaybeValue<Json>>> iter;
     if (this->isError()) return iter;
@@ -235,9 +238,7 @@ JsonMaybeValue<Json>::items() {
     for (auto& [k, v] : self().m_json.items()) {
         iter.m_values.emplace_back(
             k,
-            JsonMaybeValue<Json>(
-                self().m_checker, v, self().m_hierarchy + "." + k, self().m_hasValue
-            )
+            JsonMaybeValue<Json>(self().m_checker, v, self().m_hierarchy + "." + k, self().m_hasValue)
         );
     }
 
@@ -295,8 +296,7 @@ template <class Json>
 void JsonMaybeObject<Json>::checkUnknownKeys() {
     for (auto& [key, _] : self().m_json.items()) {
         if (!m_knownKeys.count(key)) {
-            // log::debug(self().m_hierarchy + " contains unknown key \"" + key + "\"");
-            log::debug("{} contains unknown key \"{}\"", self().m_hierarchy, key);
+            log::warn("{} contains unknown key \"{}\"", self().m_hierarchy, key);
         }
     }
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Traits.hpp"
-
+#include <cocos2d.h>
 #include <Geode/loader/Loader.hpp>
 #include <vector>
 
@@ -41,6 +41,8 @@ namespace geode::modifier {
             return node->getFieldContainer();
         }
     };
+    
+    GEODE_DLL size_t getFieldIndexForClass(size_t hash);
 
     template <class Parent, class Base>
     class FieldIntermediate {
@@ -82,7 +84,7 @@ namespace geode::modifier {
                 reinterpret_cast<Parent*>(reinterpret_cast<std::byte*>(this) - sizeof(Base));
             static_assert(sizeof(Base) == offsetof(Parent, m_fields), "offsetof not correct");
             auto container = FieldContainer::from(node);
-            static size_t index = Loader::get()->getFieldIndexForClass(typeid(Base).hash_code());
+            static size_t index = getFieldIndexForClass(typeid(Base).hash_code());
             // this pointer is offset
             auto offsetField = container->getField(index);
             if (!offsetField) {

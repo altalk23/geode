@@ -55,16 +55,3 @@
  * Useful for callbacks
  */
 #define $cls std::remove_pointer<decltype(this)>::type
-
-#define GEODE_EXECUTE_FUNC(Line_)                                                              \
-    template <class>                                                                           \
-    void _##Line_##Function();                                                                 \
-    namespace {                                                                                \
-        struct _##Line_##Unique {};                                                            \
-    }                                                                                          \
-    static inline auto _line =                                                                 \
-        (Loader::get()->scheduleOnModLoad(nullptr, &_##Line_##Function<_##Line_##Unique>), 0); \
-    template <class>                                                                           \
-    void _##Line_##Function()
-
-#define $execute GEODE_EXECUTE_FUNC(__LINE__)

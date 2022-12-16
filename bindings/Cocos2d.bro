@@ -26,24 +26,24 @@ class cocos2d::CCApplication {
 }
 
 class cocos2d::CCArray {
-	auto addObject(cocos2d::CCObject*) = mac 0x419f90, ios 0x16504c;
+	// auto addObject(cocos2d::CCObject*) = mac 0x419f90, ios 0x16504c;
 	auto addObjectNew(cocos2d::CCObject*) = mac 0x41a450;
-	auto addObjectsFromArray(cocos2d::CCArray*) = mac 0x41a2d0;
-	auto containsObject(cocos2d::CCObject*) const = mac 0x41a3e0;
-	auto count() const = mac 0x41a2f0, ios 0x1650e8;
-	static cocos2d::CCArray* create() = mac 0x419cb0, ios 0x164ec8;
-	static auto createWithObject(cocos2d::CCObject*) = mac 0x419d50;
-	auto fastRemoveObject(cocos2d::CCObject*) = mac 0x41a520;
-	auto fastRemoveObjectAtIndex(unsigned int) = mac 0x41a500;
+	// auto addObjectsFromArray(cocos2d::CCArray*) = mac 0x41a2d0;
+	// auto containsObject(cocos2d::CCObject*) const = mac 0x41a3e0;
+	// auto count() const = mac 0x41a2f0, ios 0x1650e8;
+	// static cocos2d::CCArray* create() = mac 0x419cb0, ios 0x164ec8;
+	// static auto createWithObject(cocos2d::CCObject*) = mac 0x419d50;
+	// auto fastRemoveObject(cocos2d::CCObject*) = mac 0x41a520;
+	// auto fastRemoveObjectAtIndex(unsigned int) = mac 0x41a500;
 	auto fastRemoveObjectAtIndexNew(unsigned int) = mac 0x41a510;
-	auto insertObject(cocos2d::CCObject*, unsigned int) = mac 0x41a460;
-	auto lastObject() = mac 0x41a360;
-	auto objectAtIndex(unsigned int) = mac 0x41a340, ios 0x16510c;
-	auto removeAllObjects() = mac 0x41a4f0, ios 0x1651f0;
-	auto removeLastObject(bool) = mac 0x41a470;
-	auto removeObject(cocos2d::CCObject*, bool) = mac 0x41a490;
-	auto removeObjectAtIndex(unsigned int, bool) = mac 0x41a4b0;
-	auto stringAtIndex(unsigned int) = mac 0x41a320;
+	// auto insertObject(cocos2d::CCObject*, unsigned int) = mac 0x41a460;
+	// auto lastObject() = mac 0x41a360;
+	// auto objectAtIndex(unsigned int) = mac 0x41a340, ios 0x16510c;
+	// auto removeAllObjects() = mac 0x41a4f0, ios 0x1651f0;
+	// auto removeLastObject(bool) = mac 0x41a470;
+	// auto removeObject(cocos2d::CCObject*, bool) = mac 0x41a490;
+	// auto removeObjectAtIndex(unsigned int, bool) = mac 0x41a4b0;
+	// auto stringAtIndex(unsigned int) = mac 0x41a320;
 }
 
 class cocos2d::CCBezierTo {
@@ -206,7 +206,11 @@ class cocos2d::CCFadeTo {
 
 class cocos2d::CCFileUtils : cocos2d::TypeInfo {
 	static cocos2d::CCFileUtils* sharedFileUtils() = mac 0x377030, ios 0x159450;
+	static void purgeFileUtils();
+    virtual void addSearchPath(const char* path);
+	virtual void removeSearchPath(const char *path);
     virtual std::string fullPathForFilename(const char* filename, bool unk);
+    void removeAllPaths() = mac 0x241600;
 }
 
 class cocos2d::CCGLProgram {
@@ -233,6 +237,8 @@ class cocos2d::CCIMEDispatcher {
 	static auto sharedDispatcher() = mac 0x2773f0, ios 0x12d170;
 	auto addDelegate(cocos2d::CCIMEDelegate*) = mac 0x277480, ios 0x12d204;
 	auto removeDelegate(cocos2d::CCIMEDelegate*) = mac 0x2775f0, ios 0x12d2c4;
+	void dispatchInsertText(const char* text, int len) = mac 0x277ac0;
+	void dispatchDeleteBackward() = mac 0x277af0;
 }
 
 class cocos2d::CCImage {

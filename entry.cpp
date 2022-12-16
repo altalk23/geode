@@ -1,9 +1,7 @@
-// included by default in every geode project
-#include <Geode/Loader.hpp>
+#include <Geode/loader/Mod.hpp>
+#include <Geode/loader/Loader.hpp>
 
-GEODE_API bool GEODE_CALL geode_implicit_load(geode::Mod* m) {
-    geode::Mod::setSharedMod(m);
-    geode::log::releaseSchedules(m);
-    geode::Loader::get()->releaseScheduledFunctions(m);
-    return true;
+namespace {
+    // to make sure the instance is set into the sharedMod<> in load time
+    static auto mod = geode::getMod(); 
 }

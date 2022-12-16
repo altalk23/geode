@@ -1,12 +1,16 @@
 #include "../core/Core.hpp"
+#include "loader/LoaderImpl.hpp"
 
+#include <Geode/loader/IPC.hpp>
 #include <Geode/loader/Loader.hpp>
 #include <Geode/loader/Log.hpp>
 #include <Geode/loader/Mod.hpp>
+#include <Geode/loader/Setting.hpp>
 #include <Geode/loader/SettingEvent.hpp>
-#include <InternalLoader.hpp>
-#include <InternalMod.hpp>
+#include <loader/ModImpl.hpp>
 #include <array>
+
+USE_GEODE_NAMESPACE();
 
 int geodeEntry(void* platformData);
 // platform-specific entry points
@@ -95,34 +99,54 @@ BOOL WINAPI DllMain(HINSTANCE lib, DWORD reason, LPVOID) {
     return TRUE;
 }
 #endif
-
-static auto _ = listenForSettingChanges<BoolSetting>(
-    "show-platform-console",
-    [](BoolSetting* setting) {
-        if (setting->getValue()) {
+$execute {
+    listenForSettingChanges("show-platform-console", +[](bool value) {
+        if (value) {
             Loader::get()->openPlatformConsole();
         }
         else {
-            Loader::get()->closePlatfromConsole();
+            Loader::get()->closePlatformConsole();
         }
-    }
-);
+    });
+    
+    listenForIPC("ipc-test", [](IPCEvent* event) -> nlohmann::json {
+        return "Hello from Geode!";
+    });
+
+    listenForIPC("loader-info", [](IPCEvent* event) -> nlohmann::json {
+        return Loader::get()->getModImpl()->getModInfo();
+    });
+
+    listenForIPC("list-mods", [](IPCEvent* event) -> nlohmann::json {
+        std::vector<nlohmann::json> res;
+
+        auto args = event->messageData;
+        JsonChecker checker(args);
+        auto root = checker.root("").obj();
+
+        auto includeRunTimeInfo = root.has("include-runtime-info").template get<bool>();
+        auto dontIncludeLoader = root.has("dont-include-loader").template get<bool>();
+
+        if (!dontIncludeLoader) {
+            res.push_back(
+                includeRunTimeInfo ? Loader::get()->getModImpl()->getRuntimeInfo() :
+                                    Loader::get()->getModImpl()->getModInfo().toJSON()
+            );
+        }
+
+        for (auto& mod : Loader::get()->getAllMods()) {
+            res.push_back(includeRunTimeInfo ? mod->getRuntimeInfo() : mod->getModInfo().toJSON());
+        }
+
+        return res;
+    });
+}
 
 int geodeEntry(void* platformData) {
     // setup internals
 
-    if (!InternalLoader::get()) {
-        InternalLoader::platformMessageBox(
-            "Unable to Load Geode!",
-            "There was an unknown fatal error setting up "
-            "internal tools and Geode can not be loaded. "
-            "(InternalLoader::get returned nullptr)"
-        );
-        return 1;
-    }
-
     if (!geode::core::hook::initialize()) {
-        InternalLoader::platformMessageBox(
+        LoaderImpl::get()->platformMessageBox(
             "Unable to load Geode!",
             "There was an unknown fatal error setting up "
             "internal tools and Geode can not be loaded. "
@@ -131,38 +155,20 @@ int geodeEntry(void* platformData) {
         return 1;
     }
 
-    geode_implicit_load(InternalMod::get());
-
-    if (!InternalLoader::get()->setup()) {
-        // if we've made it here, Geode will
-        // be gettable (otherwise the call to
-        // setup would've immediately crashed)
-
-        InternalLoader::platformMessageBox(
-            "Unable to Load Geode!",
-            "There was an unknown fatal error setting up "
-            "internal tools and Geode can not be loaded. "
-            "(InternalLoader::setup) returned false"
-        );
-        return 1;
-    }
-
-    log::debug("Loaded internal Geode class");
-
     // set up loader, load mods, etc.
-    if (!Loader::get()->setup()) {
-        InternalLoader::platformMessageBox(
+    if (!LoaderImpl::get()->setup()) {
+        LoaderImpl::get()->platformMessageBox(
             "Unable to Load Geode!",
             "There was an unknown fatal error setting up "
             "the loader and Geode can not be loaded."
         );
-        delete InternalLoader::get();
+        LoaderImpl::get()->reset();
         return 1;
     }
 
     log::debug("Set up loader");
 
-    if (InternalMod::get()->getSettingValue<bool>("show-platform-console")) {
+    if (Mod::get()->getSettingValue<bool>("show-platform-console")) {
         Loader::get()->openPlatformConsole();
     }
 

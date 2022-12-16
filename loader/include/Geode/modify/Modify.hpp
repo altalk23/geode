@@ -8,6 +8,7 @@
 #include <Geode/loader/Loader.hpp>
 #include <Geode/loader/Mod.hpp>
 #include <iostream>
+#include "IDManager.hpp"
 
 #define GEODE_APPLY_MODIFY_FOR_FUNCTION(                                                                                                                                                                                          \
     addr_index, pure_index, convention, className, functionName                                                                                                                                                                   \
@@ -29,9 +30,7 @@ namespace geode::modifier {
     public:
         // unordered_map<handles> idea
         ModifyBase() {
-            Loader::get()->scheduleOnModLoad(getMod(), []() {
-                Derived::apply();
-            });
+            Derived::apply();
         }
         template <class, class>
         friend class ModifyDerive;

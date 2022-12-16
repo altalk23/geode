@@ -25,6 +25,7 @@ THE SOFTWARE.
 #define __SUPPORT_ZIPUTILS_H__
 
 #include <string>
+#include <ghc/filesystem.hpp>
 #include "../../platform/CCPlatformDefine.h"
 #include "../../platform/CCPlatformConfig.h"
 #include "../../include/ccMacros.h"
@@ -216,6 +217,8 @@ namespace cocos2d
          * @since geode v1.0.0
          */
         bool isLoaded() const;
+
+        bool unzipAllTo(ghc::filesystem::path const& path);
     )
 
         /**

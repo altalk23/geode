@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 
 project(geode-loader VERSION ${GEODE_VERSION} LANGUAGES C CXX)
-set(PROJECT_VERSION_TYPE Alpha)
+set(PROJECT_VERSION_TYPE geode::VersionTag::Alpha)
+set(PROJECT_VERSION_SUFFIX -alpha)
 
 # Package info file for internal representation
 configure_file(resources/mod.json.in ${CMAKE_CURRENT_SOURCE_DIR}/resources/mod.json)
@@ -10,23 +11,18 @@ file(READ resources/about.md LOADER_ABOUT_MD)
 configure_file(src/internal/about.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/src/internal/about.hpp)
 
 # Source files
-file(GLOB CORE_SOURCES
+file(GLOB SOURCES CONFIGURE_DEPENDS 
 	src/cocos2d-ext/*.cpp
+	src/cocos2d-ext/zip/*.cpp
 	src/core/*.cpp
 	src/hooks/*.cpp
+	src/ids/*.cpp
 	src/internal/*.cpp
-	src/internal/windows/*.cpp
-	src/internal/mac/*.cpp
-	src/internal/ios/*.cpp
-	src/load/*.cpp
-	src/load/windows/*.cpp
-	src/load/mac/*.cpp
-	src/mac/*.cpp
+	src/platform/mac/*.cpp
+	src/platform/ios/*.cpp
+	src/loader/*.cpp
 	src/main.cpp
 	src/utils/*.cpp
-	src/utils/windows/*.cpp
-	src/utils/zip/*.cpp
-	src/index/*.cpp
 	src/ui/nodes/*.cpp
 	src/ui/internal/*.cpp
 	src/ui/internal/credits/*.cpp
@@ -36,25 +32,48 @@ file(GLOB CORE_SOURCES
 	src/ui/internal/settings/*.cpp
 )
 
+# Obj-c sources
 file(GLOB OBJC_SOURCES
-	src/internal/ios/*.mm
-	src/internal/mac/*.mm
-	src/load/ios/*.mm
-	src/load/mac/*.mm
-	src/utils/ios/*.mm
-	src/utils/mac/*.mm
+	src/platform/ios/*.mm
+	src/platform/mac/*.mm
 )
+set_source_files_properties(${OBJC_SOURCES} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+
+# Add platform sources
+if (WIN32)
+
+	file(GLOB WIN_SOURCES CONFIGURE_DEPENDS 
+		src/platform/windows/*.cpp
+	)
+	list(APPEND SOURCES ${WIN_SOURCES})
+
+elseif(IOS)
+
+	file(GLOB IOS_SOURCES CONFIGURE_DEPENDS 
+		src/platform/ios/*.cpp
+	)
+	list(APPEND SOURCES ${IOS_SOURCES})
+	list(APPEND SOURCES ${OBJC_SOURCES})
+
+elseif(APPLE)
+
+	file(GLOB MAC_SOURCES CONFIGURE_DEPENDS 
+		src/platform/mac/*.cpp
+	)
+	list(APPEND SOURCES ${MAC_SOURCES})
+	list(APPEND SOURCES ${OBJC_SOURCES})
+
+endif()
 
 # Embed version info in binary
 if (WIN32)
-	configure_file(src/internal/windows/info.rc.in info.rc)
-	set(CORE_SOURCES ${CORE_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/info.rc)
+	configure_file(src/platform/windows/info.rc.in info.rc)
+	set(SOURCES ${SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/info.rc)
 endif()
 
-add_library(${PROJECT_NAME} SHARED
-	${CORE_SOURCES}
-	${OBJC_SOURCES}
-)
+add_library(${PROJECT_NAME} SHARED ${SOURCES})
+
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 
 make_directory("${GEODE_BIN_PATH}/nightly")
 
@@ -90,37 +109,43 @@ package_geode_resources_now(
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
+	src/
+	src/loader/
 	src/internal/
 	src/platform/
 	src/gui/
-	src/index/
-	md4c/src/
 	hash/
 	./ # lilac
 )
 
-# For profiling
-set_property(TARGET ${PROJECT_NAME} PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
+if (APPLE)
+	# For profiling
+	target_compile_options(${PROJECT_NAME} PUBLIC "-ftime-trace")
+	#set_property(TARGET ${PROJECT_NAME} PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
+endif()
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC GEODE_EXPORTING)
 
 # Markdown support
-add_subdirectory(md4c)
-target_link_libraries(${PROJECT_NAME} md4c)
+CPMAddPackage("gh:mity/md4c#e9ff661")
+
+# Regex support
+CPMAddPackage("gh:google/re2#954656f")
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${md4c_SOURCE_DIR}/src)
 
 # Lilac (hooking)
 add_subdirectory(lilac)
-target_link_libraries(${PROJECT_NAME} z lilac_hook geode-sdk)
+target_link_libraries(${PROJECT_NAME} md4c z lilac_hook geode-sdk re2)
 
 # Use precompiled headers for faster builds
-set_source_files_properties(${OBJC_SOURCES} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 target_precompile_headers(${PROJECT_NAME} PRIVATE
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/DefaultInclude.hpp"
 	# "${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/Utils.hpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/Loader.hpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/UI.hpp"
 	# "${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/Bindings.hpp"
-	# "${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/Modify.hpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/Modify.hpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/cocos/include/cocos2d.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/cocos/extensions/cocos-ext.h"
 )
@@ -138,7 +163,7 @@ if (APPLE)
 elseif (WIN32)
 	add_subdirectory(launcher/windows)
 
-	add_subdirectory(minhook)
+	CPMAddPackage("gh:TsudaKageyu/minhook#49d03ad")
 	target_link_libraries(${PROJECT_NAME} minhook)
 
 	# target_include_directories(${PROJECT_NAME} PRIVATE dobby/include)

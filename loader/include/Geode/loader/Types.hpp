@@ -1,7 +1,9 @@
 #pragma once
 
-#include <Geode/DefaultInclude.hpp>
-#include <Geode/platform/cplatform.h>
+#include "../DefaultInclude.hpp"
+#include "../platform/cplatform.h"
+#include "../external/json/json.hpp"
+
 #include <string>
 
 namespace geode {
@@ -126,40 +128,28 @@ namespace geode {
         }
     };
 
+    constexpr std::string_view GEODE_MOD_EXTENSION = ".geode";
+
     class Mod;
     class Setting;
+    class Loader;
+    class Hook;
+    struct ModInfo;
+    class VersionInfo;
 
-    /**
-     * Represents if a mod has been loaded &
-     * its dependencies resolved
-     */
-    enum class ModResolveState {
-        // Mod has not been loaded at all
-        Unloaded,
-        // Mod has unresolved dependencies
-        Unresolved,
-        // Mod has all dependencies resolved,
-        // but is not loaded yet
-        Resolved,
-        // Mod is loaded
-        Loaded,
-        // Mod is loaded, however it is also
-        // disabled and therefore can't be used
-        Disabled,
-    };
+    class Unknown;
+    using unknownmemfn_t = void (Unknown::*)();
+    using unknownfn_t = void (*)();
 
-    /**
-     * Default Geode load method for C++
-     * mods: The mod receive a pointer to
-     * its allocated Mod instance. Return
-     * true on a succesful load,
-     * return false on error.
-     */
-    typedef bool(GEODE_CALL* geode_load)(Mod*);
-    typedef void(GEODE_CALL* geode_unload)();
-    typedef bool(GEODE_CALL* geode_enable)();
-    typedef bool(GEODE_CALL* geode_disable)();
-    typedef bool(GEODE_CALL* geode_save_data)(char const*);
-    typedef bool(GEODE_CALL* geode_load_data)(char const*);
-    typedef void(GEODE_CALL* geode_setting_updated)(char const*, Setting*);
+    namespace modifier {
+        template <class, class>
+        class FieldIntermediate;
+    }
+
+    using ModJson = nlohmann::ordered_json;
 }
+
+/**
+ * The predeclaration of the implicit entry
+ */
+GEODE_API void GEODE_CALL geode_implicit_load(geode::Mod*);

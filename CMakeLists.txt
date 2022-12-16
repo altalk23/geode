@@ -1,13 +1,23 @@
 cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build libraries static" FORCE)
+
+# Read version
 file(READ VERSION GEODE_VERSION)
 string(STRIP "${GEODE_VERSION}" GEODE_VERSION)
 
-project(geode-sdk VERSION ${GEODE_VERSION} LANGUAGES CXX C)
+# Check if version has a tag like v1.0.0-alpha
+string(FIND ${GEODE_VERSION} "-" GEODE_VERSION_HAS_TAG)
+if (GEODE_VERSION_HAS_TAG)
+	string(REGEX MATCH "[a-z]+[0-9]?$" GEODE_VERSION_TAG ${GEODE_VERSION})
+	string(SUBSTRING "${GEODE_VERSION}" 0 ${GEODE_VERSION_HAS_TAG} GEODE_VERSION)
+else()
+	set(GEODE_VERSION_TAG "")
+endif()
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+message(STATUS "Version: ${GEODE_VERSION}, tag: ${GEODE_VERSION_TAG}")
+
+project(geode-sdk VERSION ${GEODE_VERSION} LANGUAGES CXX C)
 
 add_library(${PROJECT_NAME} INTERFACE)
 
@@ -31,6 +41,7 @@ set(GEODE_LOADER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/loader)
 
 include(cmake/GeodeFile.cmake)
 include(cmake/Platform.cmake)
+include(cmake/CPM.cmake)
 
 target_sources(${PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/entry.cpp)
 
@@ -81,14 +92,18 @@ target_link_directories(${PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/lo
 
 add_definitions(-DFMT_CONSTEVAL=)
 
-add_subdirectory(filesystem)
-add_subdirectory(fmt)
+CPMAddPackage("gh:fmtlib/fmt#9.1.0")
+CPMAddPackage("gh:gulrak/filesystem#3e5b930")
 
-target_link_libraries(${PROJECT_NAME} INTERFACE filesystem fmt)
+target_link_libraries(${PROJECT_NAME} INTERFACE ghc_filesystem fmt)
 
 
 if (NOT EXISTS ${GEODE_BIN_PATH})
 	make_directory(${GEODE_BIN_PATH})
+endif()
+
+if (NOT EXISTS ${GEODE_BIN_PATH}/${PROJECT_VERSION} AND EXISTS ${GEODE_BIN_PATH}/nightly/)
+	set(GEODE_LINK_NIGHTLY 1)
 endif()
 
 if (${GEODE_LINK_NIGHTLY})
@@ -108,6 +123,7 @@ elseif(EXISTS ${GEODE_PLATFORM_BIN_PATH})
 	target_precompile_headers(${PROJECT_NAME} INTERFACE
 		"${GEODE_LOADER_PATH}/include/Geode/DefaultInclude.hpp"
 		"${GEODE_LOADER_PATH}/include/Geode/Loader.hpp"
+		# please stop adding modify here its not here because it makes windows compilation take longer than geode 1.0 release date
 		"${GEODE_LOADER_PATH}/include/Geode/UI.hpp"
 		"${GEODE_LOADER_PATH}/include/Geode/cocos/include/cocos2d.h"
 		"${GEODE_LOADER_PATH}/include/Geode/cocos/extensions/cocos-ext.h"
@@ -115,6 +131,7 @@ elseif(EXISTS ${GEODE_PLATFORM_BIN_PATH})
 else()
 	message(FATAL_ERROR
 		"No valid loader binary to link to! Install prebuilts with `geode sdk install-prebuilts`, "
-		"or build Geode from source and add `set(GEODE_LINK_NIGHTLY On)` to your CMakeLists.txt."
+		"or build Geode from source and add `set(GEODE_LINK_NIGHTLY On)` to your CMakeLists.txt "
+		"in the line before calling add_subdirectory for Geode."
 	)
 endif()

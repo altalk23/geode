@@ -1,332 +1,51 @@
 #pragma once
 
+#include "../DefaultInclude.hpp"
+#include "../cocos/support/zip_support/ZipUtils.h"
+#include "../external/json/json.hpp"
+#include "../utils/Result.hpp"
+#include "../utils/VersionInfo.hpp"
+#include "../utils/general.hpp"
 #include "Hook.hpp"
+#include "ModInfo.hpp"
 #include "Setting.hpp"
 #include "Types.hpp"
 
-#include <Geode/DefaultInclude.hpp>
-#include <Geode/utils/Result.hpp>
-#include <Geode/utils/VersionInfo.hpp>
-#include <Geode/utils/json.hpp>
-#include <Geode/utils/types.hpp>
 #include <optional>
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
 
-class InternalLoader;
-class InternalMod;
-
 namespace geode {
-    struct PlatformInfo;
-
-    class Hook;
-    class Patch;
-    class Loader;
-    class Mod;
-    class Setting;
-
-    class Unknown;
-    using unknownmemfn_t = void (Unknown::*)();
-    using unknownfn_t = void (*)();
-}
-
-/**
- * The predeclaration of the implicit entry
- */
-GEODE_API bool GEODE_CALL geode_implicit_load(geode::Mod*);
-
-namespace geode {
-
-    struct Dependency {
-        std::string m_id;
-        // todo: Dynamic versions (1.*.*)
-        VersionInfo m_version { 1, 0, 0 };
-        ModResolveState m_state = ModResolveState::Unloaded;
-        bool m_required = false;
-        Mod* m_mod = nullptr;
-        bool isUnresolved() const;
-    };
-
-    struct IssuesInfo {
-        std::string m_info;
-        std::optional<std::string> m_url;
-    };
-
-    /**
-     * Represents all the data gatherable
-     * from mod.json
-     */
-    struct GEODE_DLL ModInfo {
-        /**
-         * Path to the mod file
-         */
-        ghc::filesystem::path m_path;
-        /**
-         * Name of the platform binary within
-         * the mod zip
-         */
-        // clang-format off
-        std::string m_binaryName = GEODE_WINDOWS("mod.dll")
-                                   GEODE_MACOS("mod.dylib")
-                                   GEODE_IOS("mod.dylib")
-                                   GEODE_ANDROID("mod.so");
-        // clang-format on
-        /**
-         * Mod Version. Should follow semver.
-         */
-        VersionInfo m_version { 1, 0, 0 };
-        /**
-         * Human-readable ID of the Mod.
-         * Recommended to be in the format
-         * "com.developer.mod". Not
-         * guaranteed to be either case-
-         * nor space-sensitive. Should
-         * be restricted to the ASCII
-         * character set.
-         */
-        std::string m_id;
-        /**
-         * Name of the mod. May contain
-         * spaces & punctuation, but should
-         * be restricted to the ASCII
-         * character set.
-         */
-        std::string m_name;
-        /**
-         * The name of the head developer.
-         * Should be a single name, like
-         * "HJfod" or "The Geode Team".
-         * If the mod has multiple
-         * developers, this field should
-         * be one of their name or a team
-         * name, and the rest of the credits
-         * should be named in `m_credits`
-         * instead.
-         */
-        std::string m_developer;
-        /**
-         * Short & concise description of the
-         * mod.
-         */
-        std::optional<std::string> m_description;
-        /**
-         * Detailed description of the mod, writtenin Markdown (see
-         * <Geode/ui/MDTextArea.hpp>) for more info
-         */
-        std::optional<std::string> m_details;
-        /**
-         * Changelog for the mod, written in Markdown (see
-         * <Geode/ui/MDTextArea.hpp>) for more info
-         */
-        std::optional<std::string> m_changelog;
-        /**
-         * Support info for the mod; this means anything to show ways to
-         * support the mod's development, like donations. Written in Markdown
-         * (see <Geode/ui/MDTextArea.hpp>) for more info
-         */
-        std::optional<std::string> m_supportInfo;
-        /**
-         * Git Repository of the mod
-         */
-        std::optional<std::string> m_repository;
-        /**
-         * Info about where users should report issues and request help
-         */
-        std::optional<IssuesInfo> m_issues;
-        /**
-         * Dependencies
-         */
-        std::vector<Dependency> m_dependencies;
-        /**
-         * Mod spritesheet names
-         */
-        std::vector<std::string> m_spritesheets;
-        /**
-         * Default data store values
-         */
-        nlohmann::json m_defaultDataStore;
-        /**
-         * Mod settings
-         */
-        std::vector<std::pair<std::string, std::shared_ptr<Setting>>> m_settings;
-        /**
-         * Whether the mod can be disabled or not
-         */
-        bool m_supportsDisabling = true;
-        /**
-         * Whether the mod can be unloaded or not
-         */
-        bool m_supportsUnloading = false;
-        /**
-         * Create ModInfo from a .geode package
-         */
-        static Result<ModInfo> createFromGeodeFile(ghc::filesystem::path const& path);
-        /**
-         * Create ModInfo from a mod.json file
-         */
-        static Result<ModInfo> createFromFile(ghc::filesystem::path const& path);
-        /**
-         * Create ModInfo from a parsed json document
-         */
-        static Result<ModInfo> create(ModJson const& json);
-
-    private:
-        /**
-         * Version is passed for backwards
-         * compatibility if we update the mod.json
-         * format
-         */
-        static Result<ModInfo> createFromSchemaV010(ModJson const& json);
-
-        Result<> addSpecialFiles(ghc::filesystem::path const& dir);
-        Result<> addSpecialFiles(cocos2d::ZipFile& zip);
-
-        std::vector<std::pair<std::string, std::optional<std::string>*>> getSpecialFiles();
-    };
-
-    /**
-     * @class DataStore
-     * Internal class for notifying Mod
-     * when the datastore changes
-     */
-    class GEODE_DLL DataStore {
-        nlohmann::json m_store;
+    template <class T>
+    struct HandleToSaved : public T {
         Mod* m_mod;
+        std::string m_key;
 
-        DataStore(Mod* m, nlohmann::json& j) : m_mod(m), m_store(j) {}
+        HandleToSaved(std::string const& key, Mod* mod, T const& value) :
+            T(value), m_key(key), m_mod(mod) {}
 
-        friend class Mod;
-
-    public:
-        ~DataStore();
-
-        nlohmann::json& getJson() const;
-        nlohmann::json& operator[](std::string const&);
-        DataStore& operator=(nlohmann::json&);
-        bool contains(std::string const&) const;
-        operator nlohmann::json();
+        HandleToSaved(HandleToSaved const&) = delete;
+        HandleToSaved(HandleToSaved&&) = delete;
+        ~HandleToSaved();
     };
+
+    GEODE_HIDDEN Mod* takeNextLoaderMod();
+
+    class ModImpl;
 
     /**
      * @class Mod
      * Represents a Mod ingame.
-     * @abstract
      */
     class GEODE_DLL Mod {
     protected:
-        /**
-         * Mod info
-         */
-        ModInfo m_info;
-        /**
-         * Platform-specific info
-         */
-        PlatformInfo* m_platformInfo = nullptr;
-        /**
-         * Hooks owned by this mod
-         */
-        std::vector<Hook*> m_hooks;
-        /**
-         * Patches owned by this mod
-         */
-        std::vector<Patch*> m_patches;
-        /**
-         * Whether the mod is enabled or not
-         */
-        bool m_enabled = false;
-        /**
-         * Whether the mod binary is loaded or not
-         */
-        bool m_loaded = false;
-        /**
-         * Whether the mod is loadable or not
-         */
-        bool m_resolved = false;
-        /**
-         * Mod temp directory name
-         */
-        ghc::filesystem::path m_tempDirName;
-        /**
-         * Mod save directory name
-         */
-        ghc::filesystem::path m_saveDirPath;
-        /**
-         * Pointers to mods that depend on
-         * this Mod. Makes it possible to
-         * enable / disable them automatically,
-         * when their dependency is disabled.
-         */
-        std::vector<Mod*> m_parentDependencies;
-        /**
-         * Pointer to the Mod's implicit load function
-         */
-        geode_load m_implicitLoadFunc = nullptr;
-        /**
-         * Pointer to the Mod's load function
-         */
-        geode_load m_loadFunc = nullptr;
-        /**
-         * Pointer to the Mod's unload function
-         */
-        geode_unload m_unloadFunc = nullptr;
-        /**
-         * Pointer to the Mod's enable function
-         */
-        geode_enable m_enableFunc = nullptr;
-        /**
-         * Pointer to the Mod's enable function
-         */
-        geode_disable m_disableFunc = nullptr;
-        geode_load_data m_loadDataFunc = nullptr;
-        geode_save_data m_saveDataFunc = nullptr;
-        geode_setting_updated m_settingUpdatedFunc = nullptr;
-        /**
-         * Whether temp/<mod id>/resources should be
-         * added to CCFileUtils search paths
-         */
-        bool m_addResourcesToSearchPath = false;
-        /**
-         * Error info in case loading failed
-         */
-        std::string m_loadErrorInfo = "";
+        class Impl;
+        std::unique_ptr<Impl> m_impl;
 
-        /**
-         * Data Store object
-         */
-        nlohmann::json m_dataStore;
-
-        /**
-         * Load the platform binary
-         */
-        Result<> loadPlatformBinary();
-        Result<> unloadPlatformBinary();
-
-        Result<> saveSettings();
-        Result<> loadSettings();
-
-        void postDSUpdate();
-
-        Result<> createTempDir();
-
-        static bool validateID(std::string const& id);
-        // no copying
-        Mod(Mod const&) = delete;
-        Mod operator=(Mod const&) = delete;
-
-        /**
-         * Protected constructor/destructor
-         */
-        Mod() = delete;
-        Mod(ModInfo const& info);
-        virtual ~Mod();
-
-        friend class ::InternalMod;
         friend class Loader;
-        friend class ::InternalLoader;
         friend struct ModInfo;
-        friend class DataStore;
 
         template <class = void>
         static inline GEODE_HIDDEN Mod* sharedMod = nullptr;
@@ -337,15 +56,24 @@ namespace geode {
             sharedMod<> = mod;
         }
 
-        friend bool GEODE_CALL ::geode_implicit_load(Mod*);
+        friend void GEODE_CALL ::geode_implicit_load(Mod*);
 
     public:
+        // no copying
+        Mod(Mod const&) = delete;
+        Mod operator=(Mod const&) = delete;
+
+        // Protected constructor/destructor
+        Mod() = delete;
+        Mod(ModInfo const& info);
+        ~Mod();
+        
+
         std::string getID() const;
         std::string getName() const;
         std::string getDeveloper() const;
         std::optional<std::string> getDescription() const;
         std::optional<std::string> getDetails() const;
-        [[deprecated("Use Mod::getPackagePath instead")]] std::string getPath() const;
         ghc::filesystem::path getPackagePath() const;
         VersionInfo getVersion() const;
         bool isEnabled() const;
@@ -353,10 +81,13 @@ namespace geode {
         bool supportsDisabling() const;
         bool supportsUnloading() const;
         bool wasSuccesfullyLoaded() const;
-        std::string getLoadErrorInfo() const;
         ModInfo getModInfo() const;
         ghc::filesystem::path getTempDir() const;
         ghc::filesystem::path getBinaryPath() const;
+
+        Result<> saveData();
+        Result<> loadData();
+
         /**
          * Get the mod's save directory path
          */
@@ -364,28 +95,80 @@ namespace geode {
         /**
          * Get the mod's config directory path
          */
-        ghc::filesystem::path getConfigDir() const;
+        ghc::filesystem::path getConfigDir(bool create = true) const;
 
         bool hasSettings() const;
-        decltype(ModInfo::m_settings) getSettings() const;
+        std::vector<std::string> getSettingKeys() const;
         bool hasSetting(std::string const& key) const;
-        std::shared_ptr<Setting> getSetting(std::string const& key) const;
+        std::optional<Setting> getSettingDefinition(std::string const& key) const;
+        SettingValue* getSetting(std::string const& key) const;
+        void registerCustomSetting(
+            std::string const& key,
+            std::unique_ptr<SettingValue> value
+        );
+
+        nlohmann::json& getSaveContainer();
 
         template <class T>
         T getSettingValue(std::string const& key) const {
-            if (this->hasSetting(key)) {
-                return geode::getBuiltInSettingValue<T>(this->getSetting(key));
+            if (auto sett = this->getSetting(key)) {
+                return SettingValueSetter<T>::get(sett);
             }
             return T();
         }
 
         template <class T>
-        bool setSettingValue(std::string const& key, T const& value) {
-            if (this->hasSetting(key)) {
-                geode::setBuiltInSettingValue<T>(this->getSetting(key), value);
-                return true;
+        T setSettingValue(std::string const& key, T const& value) {
+            if (auto sett = this->getSetting(key)) {
+                auto old = this->getSettingValue<T>(sett);
+                SettingValueSetter<T>::set(sett, value);
+                return old;
             }
-            return false;
+            return T();
+        }
+
+        template <class T>
+        T getSavedValue(std::string const& key) {
+            auto& saved = this->getSaveContainer();
+            if (saved.count(key)) {
+                try {
+                    // json -> T may fail
+                    return saved.at(key);
+                }
+                catch (...) {
+                }
+            }
+            return T();
+        }
+
+        template <class T>
+        T getSavedValue(std::string const& key, T const& defaultValue) {
+            auto& saved = this->getSaveContainer();
+            if (saved.count(key)) {
+                try {
+                    // json -> T may fail
+                    return saved.at(key);
+                }
+                catch (...) {
+                }
+            }
+            saved[key] = defaultValue;
+            return defaultValue;
+        }
+
+        /**
+         * Set the value of an automatically saved variable. When the game is
+         * closed, the value is automatically saved under the key
+         * @param key Key of the saved value
+         * @param value Value
+         * @returns The old value
+         */
+        template<class T>
+        T setSavedValue(std::string const& key, T const& value) {
+            auto& saved = this->getSaveContainer();
+            auto old = this->getSavedValue<T>(key);
+            saved[key] = value;
+            return old;
         }
 
         /**
@@ -395,6 +178,9 @@ namespace geode {
          */
         template <class = void>
         static inline GEODE_HIDDEN Mod* get() {
+            if (!sharedMod<>) {
+                sharedMod<> = takeNextLoaderMod();
+            }
             return sharedMod<>;
         }
 
@@ -469,7 +255,7 @@ namespace geode {
          * @returns Successful result on success,
          * errorful result with info on error
          */
-        Result<Patch*> patch(void* address, byte_array data);
+        Result<Patch*> patch(void* address, ByteVector const& data);
 
         /**
          * Remove a patch owned by this Mod
@@ -479,20 +265,20 @@ namespace geode {
         Result<> unpatch(Patch* patch);
 
         /**
-         * Load this mod
+         * Load & enable this mod
          * @returns Successful result on success,
          * errorful result with info on error
          */
-        Result<> load();
+        Result<> loadBinary();
 
         /**
-         * Unload this mod
+         * Disable & unload this mod
          * @warning May crash if the mod doesn't
          * properly handle unloading!
          * @returns Successful result on success,
          * errorful result with info on error
          */
-        Result<> unload();
+        Result<> unloadBinary();
 
         /**
          * Enable this mod
@@ -502,33 +288,22 @@ namespace geode {
         Result<> enable();
 
         /**
-         * Disable this mod if it supports doing so
+         * Disable this mod
          * @returns Successful result on success,
          * errorful result with info on error
          */
         Result<> disable();
 
         /**
-         * Disable & unload this mod (if supported),
-         * then delete the mod's .geode file.
+         * Disable & unload this mod (if supported), then delete the mod's
+         * .geode package. If unloading isn't supported, the mod's binary
+         * will stay loaded, and in all cases the Mod* instance will still
+         * exist and be interactable.
          * @returns Successful result on success,
          * errorful result with info on error
          */
         Result<> uninstall();
         bool isUninstalled() const;
-
-        /**
-         * Return the data store object
-         * @returns DataStore object
-         * store
-         */
-        DataStore getDataStore();
-
-        /**
-         * Reset the data store to the
-         * default value
-         */
-        Result<> resetDataStore();
 
         /**
          * Check whether or not this Mod
@@ -552,7 +327,7 @@ namespace geode {
          * @returns True if the mod has unresolved
          * dependencies, false if not.
          */
-        bool updateDependencyStates();
+        Result<> updateDependencies();
         /**
          * Get a list of all the unresolved
          * dependencies this mod has
@@ -562,6 +337,14 @@ namespace geode {
         std::vector<Dependency> getUnresolvedDependencies();
 
         char const* expandSpriteName(char const* name);
+
+        /**
+         * Get info about the mod as JSON
+         * @note For IPC
+         */
+        ModJson getRuntimeInfo() const;
+
+        friend class ModImpl;
     };
 
     /**
@@ -578,3 +361,6 @@ namespace geode {
 inline char const* operator"" _spr(char const* str, size_t) {
     return geode::Mod::get()->expandSpriteName(str);
 }
+
+// this header uses Mod
+#include "ModEvent.hpp"

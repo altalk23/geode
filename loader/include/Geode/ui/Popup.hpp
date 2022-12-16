@@ -2,6 +2,7 @@
 
 #include <Geode/binding/CCMenuItemSpriteExtra.hpp>
 #include <Geode/binding/FLAlertLayer.hpp>
+#include <Geode/utils/MiniFunction.hpp>
 
 namespace geode {
     template <typename... InitArgs>
@@ -68,15 +69,16 @@ namespace geode {
         }
 
         void setTitle(
-            char const* title, char const* font = "goldFont.fnt", float scale = .7f,
+            std::string const& title,
+            const char* font = "goldFont.fnt",
+            float scale = .7f,
             float offset = 20.f
         ) {
             if (m_title) {
-                m_title->setString(title);
-            }
-            else {
+                m_title->setString(title.c_str());
+            } else {
                 auto winSize = cocos2d::CCDirector::sharedDirector()->getWinSize();
-                m_title = cocos2d::CCLabelBMFont::create(title, font);
+                m_title = cocos2d::CCLabelBMFont::create(title.c_str(), font);
                 m_title->setPosition(
                     winSize.width / 2, winSize.height / 2 + m_size.height / 2 - offset
                 );
@@ -88,11 +90,11 @@ namespace geode {
 
     GEODE_DLL FLAlertLayer* createQuickPopup(
         char const* title, std::string const& content, char const* btn1, char const* btn2,
-        std::function<void(FLAlertLayer*, bool)> selected, bool doShow = true
+        utils::MiniFunction<void(FLAlertLayer*, bool)> selected, bool doShow = true
     );
 
     GEODE_DLL FLAlertLayer* createQuickPopup(
         char const* title, std::string const& content, char const* btn1, char const* btn2,
-        float width, std::function<void(FLAlertLayer*, bool)> selected, bool doShow = true
+        float width, utils::MiniFunction<void(FLAlertLayer*, bool)> selected, bool doShow = true
     );
 }
