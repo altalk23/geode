@@ -18,7 +18,7 @@ namespace gd {
         size_t m_capacity;
     };
 
-    class string : GDString {
+    class string : protected GDString {
     private:
         InternalString m_data;
 
@@ -37,6 +37,7 @@ namespace gd {
             m_data.m_storage[0] = 0;
             m_data.m_length = 0;
             m_data.m_capacity = 15;
+        }
         
             
         string(string const& param) : string() {
@@ -56,12 +57,12 @@ namespace gd {
         }
             
         string& operator=(string const& param) {
-            (void)this->winAssign(val.c_str(), val.size());
+            (void)this->winAssign(param.c_str(), param.size());
             return *this;
         }
             
         string& operator=(string&& param) {
-            (void)this->winAssign(val.c_str(), val.size());
+            (void)this->winAssign(param.c_str(), param.size());
             return *this;
         }
         
