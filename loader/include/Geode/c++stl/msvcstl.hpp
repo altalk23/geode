@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Geode/binding/GDString.hpp>
+#include <cstring>
 #include <string>
 #include <stdexcept>
 #include <utility>
@@ -33,13 +34,6 @@ namespace gd {
         }
 
     public:
-        string() {
-            m_data.m_storage[0] = 0;
-            m_data.m_length = 0;
-            m_data.m_capacity = 15;
-        }
-        
-            
         string(string const& param) : string() {
             (void)this->winAssign(param.c_str(), param.size());
         }
@@ -49,7 +43,7 @@ namespace gd {
         }
         
         string(char const* param) : string() {
-            (void)this->winAssign(param, 0);
+            (void)this->winAssign(param, std::strlen(param));
         }
         
         string(std::string const& param) : string() {
@@ -67,13 +61,17 @@ namespace gd {
         }
         
         string& operator=(char const* param) {
-            (void)this->winAssign(param, 0);
+            (void)this->winAssign(param, std::strlen(param));
             return *this;
         }
             
         string& operator=(std::string const& param) {
             (void)this->winAssign(param.c_str(), param.size());
             return *this;
+        }
+
+        void clear() {
+            (void)this->winDtor();
         }
 
         ~string() {
