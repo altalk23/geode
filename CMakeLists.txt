@@ -2,6 +2,13 @@ cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build libraries static" FORCE)
 
+# Docs flags
+if (GEODE_BUILDING_DOCS)
+	set(GEODE_DISABLE_CLI_CALLS On)
+	set(CMAKE_EXPORT_COMPILE_COMMANDS On)
+	set(GEODE_DISABLE_PRECOMPILED_HEADERS On)
+endif()
+
 # Read version
 file(READ VERSION GEODE_VERSION)
 string(STRIP "${GEODE_VERSION}" GEODE_VERSION)
@@ -20,6 +27,10 @@ message(STATUS "Version: ${GEODE_VERSION}, tag: ${GEODE_VERSION_TAG}")
 project(geode-sdk VERSION ${GEODE_VERSION} LANGUAGES CXX C)
 
 add_library(${PROJECT_NAME} INTERFACE)
+
+if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+	set(GEODE_ALWAYS_BUILD_CODEGEN ON)
+endif()
 
 if (NOT DEFINED GEODE_DEBUG AND (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL RelWithDebInfo))
 	set(GEODE_DEBUG ON)
@@ -68,7 +79,7 @@ add_custom_command(
 	COMMAND echo codegen > ${GEODE_CODEGEN_PATH}/.stamp
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	COMMENT "Run Codegen"
-	OUTPUT ${GEODE_CODEGEN_PATH}/Geode/GeneratedSource.cpp ${GEODE_CODEGEN_PATH}/.stamp
+	OUTPUT ${GEODE_CODEGEN_PATH}/Geode/GeneratedSource.cpp ${GEODE_CODEGEN_PATH}/Geode/GeneratedAddress.cpp ${GEODE_CODEGEN_PATH}/.stamp
 )
 
 add_custom_target(CodegenRun
@@ -84,7 +95,28 @@ if (NOT EXISTS ${GEODE_CODEGEN_PATH}/Geode/GeneratedSource.cpp)
 	file(TOUCH ${GEODE_CODEGEN_PATH}/Geode/GeneratedSource.cpp)
 endif()
 
-target_sources(${PROJECT_NAME} INTERFACE ${GEODE_CODEGEN_PATH}/Geode/GeneratedSource.cpp)
+if (NOT EXISTS ${GEODE_CODEGEN_PATH}/Geode/GeneratedAddress.cpp)
+	make_directory(${GEODE_CODEGEN_PATH})
+	make_directory(${GEODE_CODEGEN_PATH}/Geode)
+	file(TOUCH ${GEODE_CODEGEN_PATH}/Geode/GeneratedAddress.cpp)
+endif()
+
+add_library(GeodeCodegenSources ${GEODE_CODEGEN_PATH}/Geode/GeneratedSource.cpp ${GEODE_CODEGEN_PATH}/Geode/GeneratedAddress.cpp)
+target_link_directories(GeodeCodegenSources PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/loader/include/link)
+target_link_libraries(GeodeCodegenSources PRIVATE ghc_filesystem fmt TulipHookInclude)
+target_include_directories(GeodeCodegenSources PRIVATE
+	${GEODE_CODEGEN_PATH}
+	${GEODE_LOADER_PATH}/include
+	${GEODE_LOADER_PATH}/include/Geode/cocos/include
+	${GEODE_LOADER_PATH}/include/Geode/cocos/extensions
+	${GEODE_LOADER_PATH}/include/Geode/fmod
+)
+target_compile_features(GeodeCodegenSources PUBLIC cxx_std_20)
+if (NOT GEODE_DISABLE_PRECOMPILED_HEADERS)
+	target_precompile_headers(GeodeCodegenSources INTERFACE
+		"${GEODE_LOADER_PATH}/include/Geode/Bindings.hpp"
+	)
+endif()
 
 target_include_directories(${PROJECT_NAME} INTERFACE
 	${GEODE_CODEGEN_PATH}
@@ -95,11 +127,17 @@ target_include_directories(${PROJECT_NAME} INTERFACE
 )
 target_link_directories(${PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/loader/include/link)
 
-
+CPMAddPackage("gh:geode-sdk/json#85be630")
 CPMAddPackage("gh:fmtlib/fmt#9.1.0")
 CPMAddPackage("gh:gulrak/filesystem#3e5b930")
 
-target_link_libraries(${PROJECT_NAME} INTERFACE ghc_filesystem fmt)
+# Tulip hook (hooking)
+if (PROJECT_IS_TOP_LEVEL AND NOT GEODE_BUILDING_DOCS)
+	set(TULIP_LINK_SOURCE ON)
+endif()
+CPMAddPackage("gh:geode-sdk/TulipHook#76984a4")
+
+target_link_libraries(${PROJECT_NAME} INTERFACE ghc_filesystem fmt TulipHookInclude GeodeCodegenSources mat-json)
 
 
 if (NOT EXISTS ${GEODE_BIN_PATH})
@@ -126,11 +164,8 @@ elseif(EXISTS ${GEODE_PLATFORM_BIN_PATH})
 	target_link_libraries(${PROJECT_NAME} INTERFACE "${GEODE_PLATFORM_BIN_PATH}")
 	target_precompile_headers(${PROJECT_NAME} INTERFACE
 		"${GEODE_LOADER_PATH}/include/Geode/DefaultInclude.hpp"
-		"${GEODE_LOADER_PATH}/include/Geode/Loader.hpp"
+		"${GEODE_LOADER_PATH}/include/Geode/Geode.hpp"
 		# please stop adding modify here its not here because it makes windows compilation take longer than geode 1.0 release date
-		"${GEODE_LOADER_PATH}/include/Geode/UI.hpp"
-		"${GEODE_LOADER_PATH}/include/Geode/cocos/include/cocos2d.h"
-		"${GEODE_LOADER_PATH}/include/Geode/cocos/extensions/cocos-ext.h"
 	)
 else()
 	message(FATAL_ERROR

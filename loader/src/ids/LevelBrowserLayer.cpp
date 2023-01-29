@@ -1,7 +1,7 @@
 #include "AddIDs.hpp"
 
 #include <Geode/Bindings.hpp>
-#include <Geode/Modify.hpp>
+#include <Geode/modify/LevelBrowserLayer.hpp>
 #include <Geode/utils/cocos.hpp>
 
 USE_GEODE_NAMESPACE();
@@ -32,6 +32,12 @@ $register_ids(LevelBrowserLayer) {
 }
 
 struct LevelBrowserLayerIDs : Modify<LevelBrowserLayerIDs, LevelBrowserLayer> {
+    static void onModify(auto& self) {
+        if (!self.setHookPriority("LevelBrowserLayer::init", GEODE_ID_PRIORITY)) {
+            log::warn("Failed to set LevelBrowserLayer::init hook priority, node IDs may not work properly");
+        }
+    }
+
     bool init(GJSearchObject* obj) {
         if (!LevelBrowserLayer::init(obj)) return false;
 

@@ -6,10 +6,13 @@
 #include <Geode/loader/Loader.hpp>
 #include <Geode/loader/Log.hpp>
 #include <Geode/loader/Mod.hpp>
+#include <Geode/loader/ModJsonTest.hpp>
 #include <Geode/utils/file.hpp>
 #include <Geode/utils/map.hpp>
 #include <Geode/utils/ranges.hpp>
+#include <Geode/utils/string.hpp>
 #include <Geode/utils/web.hpp>
+#include <Geode/utils/JsonValidation.hpp>
 #include "ModImpl.hpp"
 #include <about.hpp>
 #include <crashlog.hpp>
@@ -132,7 +135,7 @@ VersionInfo Loader::Impl::getVersion() {
 }
 
 VersionInfo Loader::Impl::minModVersion() {
-    return VersionInfo { 0, 3, 1 };
+    return VersionInfo { 1, 0, 0 };
 }
 
 VersionInfo Loader::Impl::maxModVersion() {
@@ -463,16 +466,35 @@ bool Loader::Impl::platformConsoleOpen() const {
     return m_platformConsoleOpen;
 }
 
-void Loader::Impl::downloadLoaderResources() {
-    auto version = this->getVersion().toString();
+void Loader::Impl::fetchLatestGithubRelease(
+    std::function<void(json::Value const&)> then,
+    std::function<void(std::string const&)> expect
+) {
+    if (m_latestGithubRelease) {
+        return then(m_latestGithubRelease.value());
+    }
+    web::AsyncWebRequest()
+        .join("loader-auto-update-check")
+        .fetch("https://api.github.com/repos/geode-sdk/geode/releases/latest")
+        .json()
+        .then([this, then](json::Value const& json) {
+            m_latestGithubRelease = json;
+            then(json);
+        })
+        .expect(expect);
+}
+
+void Loader::Impl::tryDownloadLoaderResources(
+    std::string const& url,
+    bool tryLatestOnError
+) {
     auto tempResourcesZip = dirs::getTempDir() / "new.zip";
     auto resourcesDir = dirs::getGeodeResourcesDir() / Mod::get()->getID();
 
     web::AsyncWebRequest()
-        .join("update-geode-loader-resources")
-        .fetch(fmt::format(
-            "https://github.com/geode-sdk/geode/releases/download/{}/resources.zip", version
-        ))
+        // use the url as a join handle
+        .join(url)
+        .fetch(url)
         .into(tempResourcesZip)
         .then([tempResourcesZip, resourcesDir](auto) {
             // unzip resources zip
@@ -484,10 +506,17 @@ void Loader::Impl::downloadLoaderResources() {
             }
             ResourceDownloadEvent(UpdateFinished()).post();
         })
-        .expect([](std::string const& info) {
-            ResourceDownloadEvent(
-                UpdateFailed("Unable to download resources: " + info)
-            ).post();
+        .expect([this, tryLatestOnError](std::string const& info, int code) {
+            // if the url was not found, try downloading latest release instead
+            // (for development versions)
+            if (code == 404 && tryLatestOnError) {
+                this->downloadLoaderResources(true);
+            }
+            else {
+                ResourceDownloadEvent(
+                    UpdateFailed("Unable to download resources: " + info)
+                ).post();
+            }
         })
         .progress([](auto&, double now, double total) {
             ResourceDownloadEvent(
@@ -497,6 +526,45 @@ void Loader::Impl::downloadLoaderResources() {
                 )
             ).post();
         });
+}
+
+void Loader::Impl::downloadLoaderResources(bool useLatestRelease) {
+    if (!useLatestRelease) {
+        this->tryDownloadLoaderResources(fmt::format(
+            "https://github.com/geode-sdk/geode/releases/download/{}/resources.zip",
+            this->getVersion().toString()
+        ));
+    }
+    else {
+        fetchLatestGithubRelease(
+            [this](json::Value const& raw) {
+                auto json = raw;
+                JsonChecker checker(json);
+                auto root = checker.root("[]").obj();
+
+                // find release asset
+                for (auto asset : root.needs("assets").iterate()) {
+                    auto obj = asset.obj();
+                    if (obj.needs("name").template get<std::string>() == "resources.zip") {
+                        this->tryDownloadLoaderResources(
+                            obj.needs("browser_download_url").template get<std::string>(),
+                            false
+                        );
+                        return;
+                    }
+                }
+
+                ResourceDownloadEvent(
+                    UpdateFailed("Unable to find resources in latest GitHub release")
+                ).post();
+            },
+            [this](std::string const& info) {
+                ResourceDownloadEvent(
+                    UpdateFailed("Unable to download resources: " + info)
+                ).post();
+            }
+        );
+    }
 }
 
 bool Loader::Impl::verifyLoaderResources() {
@@ -548,29 +616,117 @@ bool Loader::Impl::verifyLoaderResources() {
     return true;
 }
 
-nlohmann::json Loader::Impl::processRawIPC(void* rawHandle, std::string const& buffer) {
-    nlohmann::json reply;
+void Loader::Impl::downloadLoaderUpdate(std::string const& url) {
+    auto updateZip = dirs::getTempDir() / "loader-update.zip";
+    auto targetDir = dirs::getGeodeDir() / "update";
+
+    web::AsyncWebRequest()
+        .join("loader-update-download")
+        .fetch(url)
+        .into(updateZip)
+        .then([this, updateZip, targetDir](auto) {
+            // unzip resources zip
+            auto unzip = file::Unzip::intoDir(updateZip, targetDir, true);
+            if (!unzip) {
+                return LoaderUpdateEvent(
+                    UpdateFailed("Unable to unzip update: " + unzip.unwrapErr())
+                ).post();
+            }
+            m_isNewUpdateDownloaded = true;
+            LoaderUpdateEvent(UpdateFinished()).post();
+        })
+        .expect([](std::string const& info) {
+            LoaderUpdateEvent(
+                UpdateFailed("Unable to download update: " + info)
+            ).post();
+        })
+        .progress([](auto&, double now, double total) {
+            LoaderUpdateEvent(
+                UpdateProgress(
+                    static_cast<uint8_t>(now / total * 100.0),
+                    "Downloading update"
+                )
+            ).post();
+        });
+}
+
+void Loader::Impl::checkForLoaderUpdates() {
+    // Check for updates in the background
+    fetchLatestGithubRelease(
+        [this](json::Value const& raw) {
+            auto json = raw;
+            JsonChecker checker(json);
+            auto root = checker.root("[]").obj();
+
+            VersionInfo ver { 0, 0, 0 };
+            root.needs("tag_name").into(ver);
+
+            // make sure release is newer
+            if (ver <= this->getVersion()) {
+                return;
+            }
+
+            // don't auto-update major versions
+            if (ver.getMajor() > this->getVersion().getMajor()) {
+                return;
+            }
+
+            // find release asset
+            for (auto asset : root.needs("assets").iterate()) {
+                auto obj = asset.obj();
+                if (string::contains(
+                    obj.needs("name").template get<std::string>(),
+                    GEODE_PLATFORM_SHORT_IDENTIFIER
+                )) {
+                    this->downloadLoaderUpdate(
+                        obj.needs("browser_download_url").template get<std::string>()
+                    );
+                    return;
+                }
+            }
+
+            LoaderUpdateEvent(
+                UpdateFailed("Unable to find release asset for " GEODE_PLATFORM_NAME)
+            ).post();
+        },
+        [](std::string const& info) {
+            LoaderUpdateEvent(
+                UpdateFailed("Unable to check for updates: " + info)
+            ).post();
+        }
+    );
+}
+
+bool Loader::Impl::isNewUpdateDownloaded() const {
+    return m_isNewUpdateDownloaded;
+}
+    
+json::Value Loader::Impl::processRawIPC(void* rawHandle, std::string const& buffer) {
+    json::Value reply;
+
+    json::Value json;
     try {
-        // parse received message
-        auto json = nlohmann::json::parse(buffer);
-        if (!json.contains("mod") || !json["mod"].is_string()) {
-            log::warn("Received IPC message without 'mod' field");
-            return reply;
-        }
-        if (!json.contains("message") || !json["message"].is_string()) {
-            log::warn("Received IPC message without 'message' field");
-            return reply;
-        }
-        nlohmann::json data;
-        if (json.contains("data")) {
-            data = json["data"];
-        }
-        // log::debug("Posting IPC event");
-        // ! warning: if the event system is ever made asynchronous this will break!
-        IPCEvent(rawHandle, json["mod"], json["message"], data, reply).post();
-    } catch(...) {
+        json = json::parse(buffer);
+    } catch (...) {
         log::warn("Received IPC message that isn't valid JSON");
+        return reply;
     }
+
+    if (!json.contains("mod") || !json["mod"].is_string()) {
+        log::warn("Received IPC message without 'mod' field");
+        return reply;
+    }
+    if (!json.contains("message") || !json["message"].is_string()) {
+        log::warn("Received IPC message without 'message' field");
+        return reply;
+    }
+    json::Value data;
+    if (json.contains("data")) {
+        data = json["data"];
+    }
+    // log::debug("Posting IPC event");
+    // ! warning: if the event system is ever made asynchronous this will break!
+    IPCEvent(rawHandle, json["mod"].as_string(), json["message"].as_string(), data, reply).post();
     return reply;
 }
 
@@ -588,15 +744,30 @@ ListenerResult ResourceDownloadFilter::handle(
 
 ResourceDownloadFilter::ResourceDownloadFilter() {}
 
+LoaderUpdateEvent::LoaderUpdateEvent(
+    UpdateStatus const& status
+) : status(status) {}
+
+ListenerResult LoaderUpdateFilter::handle(
+    std::function<Callback> fn,
+    LoaderUpdateEvent* event
+) {
+    fn(event);
+    return ListenerResult::Propagate;
+}
+
+LoaderUpdateFilter::LoaderUpdateFilter() {}
+
 void Loader::Impl::provideNextMod(Mod* mod) {
     m_nextModLock.lock();
-    m_nextMod = mod;
+    if (mod) {
+        m_nextMod = mod;
+    }
 }
 
 Mod* Loader::Impl::takeNextMod() {
     if (!m_nextMod) {
-        this->setupInternalMod();
-        m_nextMod = Mod::sharedMod<>;
+        m_nextMod = this->createInternalMod();
     }
     auto ret = m_nextMod;
     return ret;
@@ -606,4 +777,38 @@ void Loader::Impl::releaseNextMod() {
     m_nextMod = nullptr;
 
     m_nextModLock.unlock();
+}
+
+
+Result<> Loader::Impl::createHandler(void* address, tulip::hook::HandlerMetadata const& metadata) {
+    if (m_handlerHandles.count(address)) {
+        return Err("Handler already exists at address");
+    }
+
+    GEODE_UNWRAP_INTO(auto handle, tulip::hook::createHandler(address, metadata));
+    m_handlerHandles[address] = handle;
+    return Ok();
+}
+
+bool Loader::Impl::hasHandler(void* address) {
+    return m_handlerHandles.count(address) > 0;
+}
+
+Result<tulip::hook::HandlerHandle> Loader::Impl::getHandler(void* address) {
+    if (!m_handlerHandles.count(address)) {
+        return Err("Handler does not exist at address");
+    }
+
+    return Ok(m_handlerHandles[address]);
+}
+
+Result<> Loader::Impl::removeHandler(void* address) {
+    if (!m_handlerHandles.count(address)) {
+        return Err("Handler does not exist at address");
+    }
+
+    auto handle = m_handlerHandles[address];
+    GEODE_UNWRAP(tulip::hook::removeHandler(handle));
+    m_handlerHandles.erase(address);
+    return Ok();
 }

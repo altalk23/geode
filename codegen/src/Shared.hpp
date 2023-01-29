@@ -166,6 +166,48 @@ namespace codegen {
         else throw codegen::error("Tried to get convention of non-function");
     }
 
+    inline std::string getModifyConvention(Field& f) {
+        if (codegen::platform != Platform::Windows) return "tulip::hook::DefaultConvention";
+
+        if (auto fn = f.get_fn()) {
+            auto status = getStatus(f);
+
+            if (fn->is_static) {
+                if (status == BindStatus::Binded) return "tulip::hook::CdeclConvention";
+                else return "tulip::hook::OptcallConvention";
+            }
+            else if (fn->is_virtual) {
+                return "tulip::hook::ThiscallConvention";
+            }
+            else {
+                if (status == BindStatus::Binded) return "tulip::hook::ThiscallConvention";
+                else return "tulip::hook::MembercallConvention";
+            }
+        }
+        else throw codegen::error("Tried to get convention of non-function");
+    }
+
+    inline std::string getModifyConventionName(Field& f) {
+        if (codegen::platform != Platform::Windows) return "Default";
+
+        if (auto fn = f.get_fn()) {
+            auto status = getStatus(f);
+
+            if (fn->is_static) {
+                if (status == BindStatus::Binded) return "Cdecl";
+                else return "Optcall";
+            }
+            else if (fn->is_virtual) {
+                return "Thiscall";
+            }
+            else {
+                if (status == BindStatus::Binded) return "Thiscall";
+                else return "Membercall";
+            }
+        }
+        else throw codegen::error("Tried to get convention of non-function");
+    }
+
     inline std::string getUnqualifiedClassName(std::string const& s) {
         auto index = s.rfind("::");
         if (index == std::string::npos) return s;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Types.hpp"
-#include "../external/json/json.hpp"
+#include <json.hpp>
 #include "../utils/VersionInfo.hpp"
 #include "../utils/Result.hpp"
 #include "Setting.hpp"
@@ -89,7 +89,7 @@ namespace geode {
         /**
          * Support info for the mod; this means anything to show ways to
          * support the mod's development, like donations. Written in Markdown
-         * (see <Geode/ui/MDTextArea.hpp>) for more info
+         * (see MDTextArea for more info)
          */
         std::optional<std::string> supportInfo;
         /**
@@ -157,7 +157,7 @@ namespace geode {
         static bool validateID(std::string const& id);
 
     private:
-        ModJson m_rawJSON;
+        std::shared_ptr<ModJson> m_rawJSON;
 
         /**
          * Version is passed for backwards
@@ -171,7 +171,11 @@ namespace geode {
 
         std::vector<std::pair<std::string, std::optional<std::string>*>> getSpecialFiles();
     };
-
-    // For converting ModInfo back to JSON
-    void GEODE_DLL to_json(nlohmann::json& json, ModInfo const& info);
 }
+
+template <>
+struct json::Serialize<geode::ModInfo> {
+    static json::Value to_json(geode::ModInfo const& info) {
+        return info.toJSON();
+    }
+};

@@ -36,7 +36,7 @@ CFDataRef msgPortCallback(CFMessagePortRef port, SInt32 messageID, CFDataRef dat
 
     std::string cdata(reinterpret_cast<char const*>(CFDataGetBytePtr(data)), CFDataGetLength(data));
 
-    std::string reply = LoaderImpl::get()->processRawIPC(port, cdata);
+    std::string reply = LoaderImpl::get()->processRawIPC(port, cdata).dump();
     return CFDataCreate(NULL, (UInt8 const*)reply.data(), reply.size());
 }
 
@@ -62,6 +62,10 @@ void Loader::Impl::setupIPC() {
         CFRelease(localPort);
     }).detach();
     log::debug("IPC set up");
+}
+
+bool Loader::Impl::userTriedToLoadDLLs() const {
+    return false;
 }
 
 #endif

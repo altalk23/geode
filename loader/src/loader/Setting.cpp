@@ -3,7 +3,9 @@
 #include <Geode/loader/Setting.hpp>
 #include <Geode/loader/SettingEvent.hpp>
 #include <Geode/loader/SettingNode.hpp>
+#include <Geode/loader/SettingJsonTest.hpp>
 #include <Geode/utils/general.hpp>
+#include <Geode/utils/JsonValidation.hpp>
 #include <re2/re2.h>
 
 USE_GEODE_NAMESPACE();
@@ -70,7 +72,14 @@ Result<FileSetting> FileSetting::parse(JsonMaybeObject<ModJson>& obj) {
             if (auto iobj = item.obj()) {
                 Filter filter;
                 iobj.has("description").into(filter.description);
-                iobj.has("files").into(filter.files);
+
+                std::vector<json::Value> files;
+                iobj.has("files").into(files);
+
+                for (auto& i : files) {
+                    filter.files.insert(i.as<std::string>());
+                }
+
                 sett.controls.filters.push_back(filter);
             }
         }
@@ -131,7 +140,7 @@ Result<Setting> Setting::parse(
 
                 case hash("custom"): {
                     sett.m_kind = CustomSetting {
-                        .json = obj.json()
+                        .json = std::make_shared<ModJson>(obj.json())
                     };
                     // skip checking unknown keys
                     return Ok(sett);

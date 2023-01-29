@@ -24,12 +24,16 @@ void Loader::Impl::openPlatformConsole() {
 void Loader::Impl::closePlatformConsole() {}
 
 void Loader::Impl::postIPCReply(
-    void* rawPipeHandle, std::string const& replyID, nlohmann::json const& data
+    void* rawPipeHandle, std::string const& replyID, json::Value const& data
 ) {}
 
 void Loader::Impl::setupIPC() {
     #warning "Set up pipes or smth for this platform"
     log::warning("IPC is not supported on this platform");
+}
+
+bool Loader::Impl::userTriedToLoadDLLs() const {
+    return false;
 }
 
 #endif

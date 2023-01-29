@@ -6,6 +6,8 @@
 #include <Geode/utils/string.hpp>
 #include <Geode/utils/map.hpp>
 #include <hash/hash.hpp>
+#include <Geode/utils/JsonValidation.hpp>
+
 
 USE_GEODE_NAMESPACE();
 
@@ -157,7 +159,7 @@ Index::Index() {
         std::bind(&Index::onSourceUpdate, this, std::placeholders::_1),
         SourceUpdateFilter()
     );
-    this->addSource("geode-sdk/index-test");
+    this->addSource("geode-sdk/mods");
 }
 
 Index* Index::get() {

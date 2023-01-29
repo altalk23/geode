@@ -1,7 +1,7 @@
 #include "AddIDs.hpp"
 
 #include <Geode/Bindings.hpp>
-#include <Geode/Modify.hpp>
+#include <Geode/modify/LevelSettingsLayer.hpp>
 #include <Geode/utils/cocos.hpp>
 
 USE_GEODE_NAMESPACE();
@@ -197,6 +197,12 @@ $register_ids(LevelSettingsLayer) {
 }
 
 struct LevelSettingsLayerIDs : Modify<LevelSettingsLayerIDs, LevelSettingsLayer> {
+    static void onModify(auto& self) {
+        if (!self.setHookPriority("LevelSettingsLayer::init", GEODE_ID_PRIORITY)) {
+            log::warn("Failed to set LevelSettingsLayer::init hook priority, node IDs may not work properly");
+        }
+    }
+
     bool init(LevelSettingsObject* levelSettings, LevelEditorLayer* editor) {
         if (!LevelSettingsLayer::init(levelSettings, editor)) return false;
 

@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 
 project(geode-loader VERSION ${GEODE_VERSION} LANGUAGES C CXX)
-set(PROJECT_VERSION_TYPE geode::VersionTag::Alpha)
-set(PROJECT_VERSION_SUFFIX -alpha)
+set(PROJECT_VERSION_TYPE geode::VersionTag::Beta)
+set(PROJECT_VERSION_SUFFIX -beta)
 
 # Package info file for internal representation
 configure_file(resources/mod.json.in ${CMAKE_CURRENT_SOURCE_DIR}/resources/mod.json)
@@ -23,6 +23,7 @@ file(GLOB SOURCES CONFIGURE_DEPENDS
 	src/loader/*.cpp
 	src/main.cpp
 	src/utils/*.cpp
+	src/ui/*.cpp
 	src/ui/nodes/*.cpp
 	src/ui/internal/*.cpp
 	src/ui/internal/credits/*.cpp
@@ -115,28 +116,33 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 	src/platform/
 	src/gui/
 	hash/
-	./ # lilac
+	./
 )
 
 if (APPLE)
 	# For profiling
 	target_compile_options(${PROJECT_NAME} PUBLIC "-ftime-trace")
+	# target_link_options(${PROJECT_NAME} PRIVATE "-Wl,-e,_dynamicInit")
 	#set_property(TARGET ${PROJECT_NAME} PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC GEODE_EXPORTING)
 
-# Markdown support
-CPMAddPackage("gh:mity/md4c#e9ff661")
+# These are only needed for building source :-)
+if (NOT GEODE_BUILDING_DOCS)
+	# Markdown support
+	CPMAddPackage("gh:mity/md4c#e9ff661")
 
-# Regex support
-CPMAddPackage("gh:google/re2#954656f")
+	# Regex support
+	CPMAddPackage("gh:google/re2#954656f")
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${md4c_SOURCE_DIR}/src)
+	target_include_directories(${PROJECT_NAME} PRIVATE ${md4c_SOURCE_DIR}/src)
 
-# Lilac (hooking)
-add_subdirectory(lilac)
-target_link_libraries(${PROJECT_NAME} md4c z lilac_hook geode-sdk re2)
+	target_link_libraries(${PROJECT_NAME} md4c re2)
+endif()
+
+target_link_libraries(${PROJECT_NAME} z TulipHook geode-sdk mat-json)
+
 
 # Use precompiled headers for faster builds
 if (NOT GEODE_DISABLE_PRECOMPILED_HEADERS)
@@ -146,7 +152,6 @@ if (NOT GEODE_DISABLE_PRECOMPILED_HEADERS)
 		"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/Loader.hpp"
 		"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/UI.hpp"
 		# "${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/Bindings.hpp"
-		"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/Modify.hpp"
 		"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/cocos/include/cocos2d.h"
 		"${CMAKE_CURRENT_SOURCE_DIR}/include/Geode/cocos/extensions/cocos-ext.h"
 	)
@@ -154,6 +159,12 @@ endif()
 
 # Create launcher
 if (APPLE) 
+	set_target_properties(geode-loader PROPERTIES 
+		SYSTEM_NAME MacOS
+		OSX_DEPLOYMENT_TARGET 10.9
+		APPLE_SILICON_PROCESSOR x86_64
+	)
+
 	add_subdirectory(launcher/mac)
 
 	if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm" OR GEODE_TARGET_PLATFORM STREQUAL "iOS")

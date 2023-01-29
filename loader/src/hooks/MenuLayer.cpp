@@ -9,8 +9,10 @@
 #include <Geode/ui/GeodeUI.hpp>
 #include <Geode/ui/Notification.hpp>
 #include <Geode/ui/Popup.hpp>
+#include <Geode/ui/MDPopup.hpp>
 #include <Geode/utils/cocos.hpp>
 #include <loader/ModImpl.hpp>
+#include <loader/LoaderImpl.hpp>
 
 USE_GEODE_NAMESPACE();
 
@@ -42,6 +44,12 @@ $execute {
 };
 
 struct CustomMenuLayer : Modify<CustomMenuLayer, MenuLayer> {
+	static void onModify(auto& self) {
+		if (!self.setHookPriority("MenuLayer::init", GEODE_ID_PRIORITY)) {
+            log::warn("Failed to set MenuLayer::init hook priority, node IDs may not work properly");
+        }
+    }
+
 	CCSprite* m_geodeButton;
 
     bool init() {
@@ -61,14 +69,17 @@ struct CustomMenuLayer : Modify<CustomMenuLayer, MenuLayer> {
 			CircleBaseColor::Green,
 			CircleBaseSize::Medium2
 		);
+		auto geodeBtnSelector = &CustomMenuLayer::onGeode;
 		if (!m_fields->m_geodeButton) {
+			geodeBtnSelector = &CustomMenuLayer::onMissingTextures;
 			m_fields->m_geodeButton = ButtonSprite::create("!!");
 		}
 
         auto bottomMenu = static_cast<CCMenu*>(this->getChildByID("bottom-menu"));
 
 		auto btn = CCMenuItemSpriteExtra::create(
-			m_fields->m_geodeButton, this, menu_selector(CustomMenuLayer::onGeode)
+			m_fields->m_geodeButton, this,
+			static_cast<SEL_MenuHandler>(geodeBtnSelector)
 		);
 		btn->setID("geode-button"_spr);
 		bottomMenu->addChild(btn);
@@ -89,6 +100,42 @@ struct CustomMenuLayer : Modify<CustomMenuLayer, MenuLayer> {
                 Notification::create("Some mods failed to load", NotificationIcon::Error)->show();
             }
         }
+
+		// show if the user tried to be naughty and load arbitary DLLs
+		static bool shownTriedToLoadDlls = false;
+		if (!shownTriedToLoadDlls) {
+			shownTriedToLoadDlls = true;
+			if (Loader::get()->userTriedToLoadDLLs()) {
+				auto popup = FLAlertLayer::create(
+					"Hold up!",
+					"It appears that you have tried to <cr>load DLLs</c> with Geode. "
+					"Please note that <cy>Geode is incompatible with ALL DLLs</c>, "
+					"as they can cause Geode mods to <cr>error</c>, or even "
+					"<cr>crash</c>.\n\n"
+					"Remove the DLLs / other mod loaders you have, or <cr>proceed at "
+					"your own risk.</c>",
+					"OK"
+				);
+				popup->m_scene = this;
+				popup->m_noElasticity = true;
+				popup->show();
+			}
+		}
+
+		// show auto update message
+		static bool shownUpdateInfo = false;
+		if (LoaderImpl::get()->isNewUpdateDownloaded() && !shownUpdateInfo) {
+			shownUpdateInfo = true;
+			auto popup = FLAlertLayer::create(
+				"Update downloaded",
+				"A new <cy>update</c> for Geode has been installed! "
+				"Please <cy>restart the game</c> to apply.",
+				"OK"
+			);
+			popup->m_scene = this;
+			popup->m_noElasticity = true;
+			popup->show();
+		}
 
         // show crash info
         static bool shownLastCrash = false;
@@ -148,6 +195,64 @@ struct CustomMenuLayer : Modify<CustomMenuLayer, MenuLayer> {
 			icon->setScale(.5f);
 			m_fields->m_geodeButton->addChild(icon);
 		}
+	}
+
+	void onMissingTextures(CCObject*) {
+		static bool shownInfoPopup = false;
+		if (shownInfoPopup) {
+			return this->onGeode(nullptr);
+		}
+		shownInfoPopup = true;
+
+	#ifdef GEODE_IS_DESKTOP
+
+		try {
+			ghc::filesystem::create_directories(dirs::getGeodeDir() / "update" / "resources");
+		} catch(...) {}
+
+		createQuickPopup(
+			"Missing Textures",
+			"You appear to be missing textures, and the automatic texture fixer "
+			"hasn't fixed the issue.\n"
+			"Download <cy>resources.zip</c> from the latest release on GitHub, "
+			"and <cy>unzip its contents</c> into <cb>geode/update/resources</c>.\n"
+			"Afterwards, <cg>restart the game</c>.\n"
+			"You may also continue without installing resources, but be aware that "
+			"the game <cr>will crash</c>.",
+			"Dismiss", "Open Github",
+			[](auto, bool btn2) {
+				if (btn2) {
+					web::openLinkInBrowser("https://github.com/geode-sdk/geode/releases/latest");
+					file::openFolder(dirs::getGeodeDir() / "update" / "resources");
+					FLAlertLayer::create(
+						"Info",
+						"Opened GitHub in your browser and the destination in "
+						"your file browser.\n"
+						"Download <cy>resources.zip</c>, "
+						"and <cy>unzip its contents</c> into the destination "
+						"folder.\n"
+						"<cb>Don't add any new folders to the destination!</c>",
+						"OK"
+					)->show();
+				}
+			}
+		);
+
+	#else
+
+		// dunno if we can auto-create target directory on mobile, nor if the 
+		// user has access to moving stuff there
+
+		FLAlertLayer::create(
+			"Missing Textures",
+			"You appear to be missing textures, and the automatic texture fixer "
+			"hasn't fixed the issue.\n"
+			"**<cy>Report this bug to the Geode developers</c>**. It is very likely "
+			"that your game <cr>will crash</c> until the issue is resolved.",
+			"OK"
+		)->show();
+
+	#endif
 	}
 
     void onGeode(CCObject*) {

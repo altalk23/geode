@@ -2,7 +2,7 @@
 
 #include "../DefaultInclude.hpp"
 #include "../platform/cplatform.h"
-#include "../external/json/json.hpp"
+#include <json.hpp>
 
 #include <string>
 
@@ -146,7 +146,8 @@ namespace geode {
         class FieldIntermediate;
     }
 
-    using ModJson = nlohmann::ordered_json;
+    // TODO: make ordered
+    using ModJson = json::Value;
 }
 
 /**

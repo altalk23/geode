@@ -1,7 +1,7 @@
 #include "AddIDs.hpp"
 
 #include <Geode/Bindings.hpp>
-#include <Geode/Modify.hpp>
+#include <Geode/modify/CreatorLayer.hpp>
 #include <Geode/utils/cocos.hpp>
 
 USE_GEODE_NAMESPACE();
@@ -52,6 +52,12 @@ $register_ids(CreatorLayer) {
 }
 
 struct CreatorLayerIDs : Modify<CreatorLayerIDs, CreatorLayer> {
+    static void onModify(auto& self) {
+        if (!self.setHookPriority("CreatorLayer::init", GEODE_ID_PRIORITY)) {
+            log::warn("Failed to set CreatorLayer::init hook priority, node IDs may not work properly");
+        }
+    }
+
     bool init() {
         if (!CreatorLayer::init()) return false;
 

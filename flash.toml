@@ -7,30 +7,32 @@ name = "Geode"
 version = "v1.0.0-beta"
 repository = "https://github.com/geode-sdk/geode"
 tree = "https://github.com/geode-sdk/geode/tree/main"
+icon = "loader/resources/logos/geode-circle.png"
+
+[tutorials]
+dir = "docs"
+assets = ["docs/assets/*.png"]
 
 [[sources]]
 name = "Geode"
-dir = "loader/include/Geode"
-# todo: Make flash infer this from cmake
-strip-include-prefix = "loader/include"
+dir = "loader/include"
 include = [
-    "**/*.hpp",
-    "**/*.h",
+    "Geode/**/*.hpp",
+    "Geode/**/*.h",
 ]
 exclude = [
-    "modify/Comparer.hpp",
-    "platform/*.hpp",
-    "c++stl/*.hpp",
+    "Geode/modify/Comparer.hpp",
+    "Geode/platform/*.hpp",
+    "Geode/c++stl/*.hpp",
     # All of the relevant cocos headers are included through Geode headers
-    "cocos/**/*.h"
+    "Geode/cocos/**/*.h"
 ]
 
 [[sources]]
 name = "Bindings"
-dir = "build-docs/codegenned/Geode/binding"
-strip-include-prefix = "build-docs/codegenned"
+dir = "build-docs/codegenned"
 include = [
-    "*.hpp"
+    "Geode/binding/*.hpp"
 ]
 # Bindings are generated at compile time
 exists-online = false
@@ -42,15 +44,14 @@ config-args = [
     "-G", "Ninja",
     "-DCMAKE_CXX_COMPILER=Clang",
     "-DCMAKE_C_COMPILER=Clang",
-    "-DGEODE_DISABLE_CLI_CALLS=On",
+    "-DGEODE_BUILDING_DOCS=On",
     "-DGEODE_PLATFORM_NAME=Win32",
-    "-DCMAKE_EXPORT_COMPILE_COMMANDS=On",
-    "-DGEODE_DISABLE_PRECOMPILED_HEADERS=On",
     "-DGEODE_CODEGEN_CMAKE_ARGS=-DCMAKE_CXX_COMPILER=Clang;-DCMAKE_C_COMPILER=Clang",
     "-DCMAKE_C_FLAGS=-m32",
     "-DCMAKE_CXX_FLAGS=-m32",
     "-DWIN32=On"
 ]
+
 # We want to build codegen in order to get the bindings
 build = true
 build-dir = "build-docs"
