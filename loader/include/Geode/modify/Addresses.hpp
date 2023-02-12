@@ -1,9 +1,11 @@
 #pragma once
-#include "Types.hpp"
-#include <Geode/utils/addresser.hpp>
+
+#include <Geode/utils/Result.hpp>
+#include <tulip/TulipHook.hpp>
 
 namespace geode::modifier {
-	struct addresses {
-		#include <Geode/GeneratedAddress.hpp>
-	};
+    template <uint32_t Id>
+    uintptr_t address();
+
+    Result<tulip::hook::HandlerMetadata> handlerMetadataForAddress(uintptr_t address);
 }

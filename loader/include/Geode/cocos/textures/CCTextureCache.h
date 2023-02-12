@@ -91,6 +91,7 @@ public:
      *  @js getInstance
      */
     static CCTextureCache * sharedTextureCache();
+    static GEODE_DLL CCTextureCache* get();
 
     /** purges the cache. It releases the retained instance.
     @since v0.99.0

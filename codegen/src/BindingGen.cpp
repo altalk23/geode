@@ -8,11 +8,20 @@ namespace { namespace format_strings {
 )GEN";
 
     char const* class_includes = R"GEN(#pragma once
+#include <stdexcept>
+#include <Geode/platform/platform.hpp>
 #include <Geode/c++stl/gdstdlib.hpp>
 #include <cocos2d.h>
 #include <cocos-ext.h>
 #include <Geode/GeneratedPredeclare.hpp>
 #include <Geode/Enums.hpp>
+#include <Geode/utils/SeedValue.hpp>
+
+)GEN";
+
+    char const* class_no_includes = R"GEN(#pragma once
+#include <Geode/platform/platform.hpp>
+#include <stdexcept>
 
 )GEN";
     
@@ -22,6 +31,7 @@ namespace { namespace format_strings {
     char const* class_start = R"GEN(
 class {class_name}{base_classes} {{
 public:
+    static constexpr auto CLASS_NAME = "{class_name}";
 )GEN";
 
 	char const* monostate_constructor = R"GEN(    GEODE_MONOSTATE_CONSTRUCTOR_GD({class_name}, {first_base})
@@ -33,13 +43,19 @@ public:
     char const* function_definition = R"GEN({docs}    {static}{virtual}{return_type} {function_name}({parameters}){const};
 )GEN";
 
-    char const* error_definition = R"GEN(    template <bool T=false>
+    char const* error_definition = R"GEN(    
+    #ifdef GEODE_WARN_INCORRECT_MEMBERS
+    [[deprecated("Function is not implemented - will throw at runtime!!!")]]
+    #endif
     {static}{return_type} {function_name}({parameters}){const}{{
-        static_assert(T, "Implement {class_name}::{function_name}");
+        throw std::runtime_error("Use of undefined function " + GEODE_PRETTY_FUNCTION);
     }}
 )GEN";
 
-    char const* error_definition_virtual = R"GEN(    [[deprecated("Use of undefined virtual function - will crash at runtime!!!")]]
+    char const* error_definition_virtual = R"GEN(    
+    #ifdef GEODE_WARN_INCORRECT_MEMBERS
+    [[deprecated("Use of undefined virtual function - will crash at runtime!!!")]]
+    #endif
     {virtual}{return_type} {function_name}({parameters}){const}{{
         #ifdef GEODE_NO_UNDEFINED_VIRTUALS
         static_assert(false, "Undefined virtual function - implement in GeometryDash.bro");
@@ -47,6 +63,12 @@ public:
         throw std::runtime_error("Use of undefined virtual function " + GEODE_PRETTY_FUNCTION);
     }}
 )GEN";
+
+    char const* warn_offset_member = R"GEN(
+    #ifdef GEODE_WARN_INCORRECT_MEMBERS
+    [[deprecated("Member placed incorrectly - will crash at runtime!!!")]]
+    #endif
+    )GEN";
 
     char const* structor_definition = R"GEN(
     {function_name}({parameters});)GEN";
@@ -75,7 +97,11 @@ std::string generateBindingHeader(Root& root, ghc::filesystem::path const& singl
         );
 
         std::string single_output;
-        single_output += format_strings::class_includes;
+        if (cls.name != "GDString") {
+            single_output += format_strings::class_includes;
+        } else {
+            single_output += format_strings::class_no_includes;
+        }
 
         for (auto dep : cls.depends) {
             if (can_find(dep, "cocos2d::")) continue;
@@ -115,7 +141,7 @@ std::string generateBindingHeader(Root& root, ghc::filesystem::path const& singl
                 single_output += "\t" + i->inner + "\n";
                 continue;
             } else if (auto m = field.get_as<MemberField>()) {
-                if (unimplementedField) single_output += "\t[[deprecated(\"Member placed incorrectly - will crash at runtime!!!\")]]\n";
+                if (unimplementedField) single_output += format_strings::warn_offset_member;
                 single_output += fmt::format(format_strings::member_definition,
                     fmt::arg("type", m->type.name),
                     fmt::arg("member_name", m->name + str_if(fmt::format("[{}]", m->count), m->count))

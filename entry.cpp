@@ -1,10 +1,20 @@
-// included by default in every geode project
 
-#include <Geode/Loader.hpp>
+#include <Geode/loader/Loader.hpp>
+#include <Geode/loader/Mod.hpp>
 
-GEODE_API bool GEODE_CALL geode_implicit_load(geode::Mod* m) {
-	geode::Mod::setSharedMod(m);
-	geode::log::releaseSchedules(m);
-	geode::Loader::get()->releaseScheduledFunctions(m);
-	return true;
+namespace geode {
+    /**
+     * To bypass the need for cyclic dependencies,
+     * this function does the exact same as Mod::get()
+     * However, it can be externed, unlike Mod::get()
+     * @returns Same thing Mod::get() returns
+     */
+    Mod* getMod() {
+        return Mod::get();
+    }
+}
+
+namespace {
+    // to make sure the instance is set into the sharedMod<> in load time
+    static auto mod = geode::getMod(); 
 }

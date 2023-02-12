@@ -1,27 +1,33 @@
-#include <Geode/loader/Mod.hpp>
+#include "loader/LoaderImpl.hpp"
+
+#include <Geode/loader/IPC.hpp>
 #include <Geode/loader/Loader.hpp>
-#include <Geode/loader/SettingEvent.hpp>
-#include <InternalLoader.hpp>
-#include <InternalMod.hpp>
 #include <Geode/loader/Log.hpp>
-#include "../core/Core.hpp"
+#include <Geode/loader/Mod.hpp>
+#include <Geode/loader/Setting.hpp>
+#include <Geode/loader/SettingEvent.hpp>
+#include <Geode/loader/ModJsonTest.hpp>
+#include <Geode/utils/JsonValidation.hpp>
+
 #include <array>
+
+USE_GEODE_NAMESPACE();
 
 int geodeEntry(void* platformData);
 // platform-specific entry points
 
 #if defined(GEODE_IS_IOS) || defined(GEODE_IS_MACOS)
-#include <mach-o/dyld.h>
-#include <unistd.h>
-#include <dlfcn.h>
+    #include <dlfcn.h>
+    #include <mach-o/dyld.h>
+    #include <unistd.h>
 
 std::length_error::~length_error() _NOEXCEPT {} // do not ask...
 
-// camila has an old ass macos and this function turned 
-// from dynamic to static thats why she needs to define it 
+// camila has an old ass macos and this function turned
+// from dynamic to static thats why she needs to define it
 // this is what old versions does to a silly girl
 
-__attribute__((constructor)) void _entry() {
+void dynamicEntry() {
     auto dylib = dlopen("GeodeBootstrapper.dylib", RTLD_NOLOAD);
     dlclose(dylib);
 
@@ -41,8 +47,7 @@ __attribute__((constructor)) void _entry() {
 
     if (ghc::filesystem::exists(updatesDir / "GeodeBootstrapper.dylib", error) && !error) {
         ghc::filesystem::rename(
-            updatesDir / "GeodeBootstrapper.dylib", 
-            libDir / "GeodeBootstrapper.dylib", error
+            updatesDir / "GeodeBootstrapper.dylib", libDir / "GeodeBootstrapper.dylib", error
         );
         if (error) return;
     }
@@ -50,8 +55,15 @@ __attribute__((constructor)) void _entry() {
     geodeEntry(nullptr);
 }
 
+extern "C" __attribute__((visibility("default"))) void dynamicTrigger() {
+    std::thread(&dynamicEntry).detach();
+}
+
+// remove when we can figure out how to not remove it
+auto dynamicTriggerRef = &dynamicTrigger;
+
 #elif defined(GEODE_IS_WINDOWS)
-#include <Windows.h>
+    #include <Windows.h>
 
 DWORD WINAPI loadThread(void* arg) {
     bool canMoveBootstrapper = true;
@@ -69,8 +81,7 @@ DWORD WINAPI loadThread(void* arg) {
 
         if (ghc::filesystem::exists(updatesDir / "GeodeBootstrapper.dll", error) && !error) {
             ghc::filesystem::rename(
-                updatesDir / "GeodeBootstrapper.dll", 
-                workingDir / "GeodeBootstrapper.dll", error
+                updatesDir / "GeodeBootstrapper.dll", workingDir / "GeodeBootstrapper.dll", error
             );
             if (error) return error.value();
         }
@@ -96,72 +107,86 @@ BOOL WINAPI DllMain(HINSTANCE lib, DWORD reason, LPVOID) {
     return TRUE;
 }
 #endif
-
-static auto _ = listenForSettingChanges(
-    "show-platform-console",
-    +[](std::shared_ptr<BoolSetting> setting) {
-        if (setting->getValue()) {
+$execute {
+    listenForSettingChanges("show-platform-console", +[](bool value) {
+        if (value) {
             Loader::get()->openPlatformConsole();
-        } else {
-            Loader::get()->closePlatfromConsole();
         }
-    }
-);
+        else {
+            Loader::get()->closePlatformConsole();
+        }
+    });
+    
+    listenForIPC("ipc-test", [](IPCEvent* event) -> json::Value {
+        return "Hello from Geode!";
+    });
+
+    listenForIPC("loader-info", [](IPCEvent* event) -> json::Value {
+        return Loader::get()->getModImpl()->getModInfo();
+    });
+
+    listenForIPC("list-mods", [](IPCEvent* event) -> json::Value {
+        std::vector<json::Value> res;
+
+        auto args = *event->messageData;
+        JsonChecker checker(args);
+        auto root = checker.root("").obj();
+
+        auto includeRunTimeInfo = root.has("include-runtime-info").template get<bool>();
+        auto dontIncludeLoader = root.has("dont-include-loader").template get<bool>();
+
+        if (!dontIncludeLoader) {
+            res.push_back(
+                includeRunTimeInfo ? Loader::get()->getModImpl()->getRuntimeInfo() :
+                                    Loader::get()->getModImpl()->getModInfo().toJSON()
+            );
+        }
+
+        for (auto& mod : Loader::get()->getAllMods()) {
+            res.push_back(includeRunTimeInfo ? mod->getRuntimeInfo() : mod->getModInfo().toJSON());
+        }
+
+        return res;
+    });
+}
 
 int geodeEntry(void* platformData) {
-    // setup internals
 
-    if (!InternalLoader::get()) {
-        InternalLoader::platformMessageBox(
+    // set up internal mod, settings and data
+    auto internalSetupRes = LoaderImpl::get()->setupInternalMod();
+    if (!internalSetupRes) {
+        LoaderImpl::get()->platformMessageBox(
             "Unable to Load Geode!",
             "There was an unknown fatal error setting up "
-            "internal tools and Geode can not be loaded. "
-            "(InternalLoader::get returned nullptr)"
+            "the internal mod and Geode can not be loaded." + internalSetupRes.unwrapErr()
         );
-    }
-
-    if (!geode::core::hook::initialize()) {
-        InternalLoader::platformMessageBox(
-            "Unable to load Geode!",
-            "There was an unknown fatal error setting up "
-            "internal tools and Geode can not be loaded. "
-            "(Unable to set up hook manager)"
-        );
-    }
-
-    geode_implicit_load(InternalMod::get());
-
-    if (!InternalLoader::get()->setup()) {
-        // if we've made it here, Geode will 
-        // be gettable (otherwise the call to 
-        // setup would've immediately crashed)
-
-        InternalLoader::platformMessageBox(
-            "Unable to Load Geode!",
-            "There was an unknown fatal error setting up "
-            "internal tools and Geode can not be loaded. "
-            "(InternalLoader::setup) returned false"
-        );
+        LoaderImpl::get()->reset();
         return 1;
     }
 
-    log::debug("Loaded internal Geode class");
-
     // set up loader, load mods, etc.
-    if (!Loader::get()->setup()) {
-        InternalLoader::platformMessageBox(
+    auto setupRes = LoaderImpl::get()->setup();
+    if (!setupRes) {
+        LoaderImpl::get()->platformMessageBox(
             "Unable to Load Geode!",
             "There was an unknown fatal error setting up "
-            "the loader and Geode can not be loaded."
+            "the loader and Geode can not be loaded. " 
+            "(" + setupRes.unwrapErr() + ")"
         );
-        delete InternalLoader::get();
+        LoaderImpl::get()->reset();
         return 1;
     }
 
     log::debug("Set up loader");
-    
-    if (InternalMod::get()->getSettingValue<bool>("show-platform-console")) {
+
+    // open console
+    if (Mod::get()->getSettingValue<bool>("show-platform-console")) {
         Loader::get()->openPlatformConsole();
+    }
+
+    // download and install new loader update in the background
+    if (Mod::get()->getSettingValue<bool>("auto-check-updates")) {
+        LoaderImpl::get()->checkForLoaderUpdates();
     }
 
     log::debug("Entry done.");

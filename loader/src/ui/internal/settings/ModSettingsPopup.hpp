@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Geode/ui/Popup.hpp>
-#include <Geode/utils/Ref.hpp>
 #include <Geode/loader/SettingNode.hpp>
+#include <Geode/ui/Popup.hpp>
+#include <Geode/utils/cocos.hpp>
 
 USE_GEODE_NAMESPACE();
 
@@ -13,15 +13,16 @@ protected:
     CCMenuItemSpriteExtra* m_applyBtn;
     ButtonSprite* m_applyBtnSpr;
 
-    void settingValueChanged(SettingNode* node) override;
-    
+    void settingValueChanged(SettingNode*) override;
+    void settingValueCommitted(SettingNode*) override;
+
     bool setup(Mod* mod) override;
     bool hasUncommitted() const;
     void onClose(CCObject*) override;
     void onApply(CCObject*);
     void onResetAll(CCObject*);
-    
+    void onOpenSaveDirectory(CCObject*);
+
 public:
     static ModSettingsPopup* create(Mod* mod);
 };
-

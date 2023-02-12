@@ -1,7 +1,9 @@
 #pragma once
 
-#include <string>
 #include <Geode/DefaultInclude.hpp>
+#include <ghc/fs_fwd.hpp>
+#include <string>
+
 /**
  * Platform-specific crashlog functions. Used by the loader
  */
@@ -18,8 +20,8 @@ namespace crashlog {
     bool GEODE_DLL didLastLaunchCrash();
     /**
      * Get the directory where crashlogs are saved on the current platform
-     * @returns Path to the directory, or an empty string if the platform does 
+     * @returns Path to the directory, or an empty string if the platform does
      * not support crash logs
      */
-    std::string GEODE_DLL getCrashLogDirectory();
+    ghc::filesystem::path GEODE_DLL getCrashLogDirectory();
 }

@@ -3,7 +3,8 @@
 USE_GEODE_NAMESPACE();
 
 #include <Geode/modify/AchievementNotifier.hpp>
-class $modify(AchievementNotifier) {
+
+struct SceneSwitch : Modify<SceneSwitch, AchievementNotifier> {
     void willSwitchToScene(CCScene* scene) {
         AchievementNotifier::willSwitchToScene(scene);
         SceneManager::get()->willSwitchToScene(scene);

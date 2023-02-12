@@ -1,97 +1,77 @@
 #pragma once
 
 #include "Event.hpp"
-#include <optional>
-#include "Setting.hpp"
 #include "Loader.hpp"
+#include "Setting.hpp"
+
+#include <optional>
 
 namespace geode {
-    class GEODE_DLL SettingChangedEvent : public Event {
-    protected:
-        std::string m_modID;
-        std::shared_ptr<Setting> m_setting;
-    
-    public:
-        SettingChangedEvent(
-            std::string const& modID,
-            std::shared_ptr<Setting> setting
-        );
-        std::string getModID() const;
-        std::shared_ptr<Setting> getSetting() const;
+    struct GEODE_DLL SettingChangedEvent : public Event {
+        Mod* mod;
+        SettingValue* value;
+
+        SettingChangedEvent(Mod* mod, SettingValue* value);
     };
 
-    template<class T>
-	class SettingChangedEventHandler : public EventHandler<SettingChangedEvent> {
-	public:
-		using Consumer = void(*)(std::shared_ptr<T>);
-        
-        static_assert(
-            std::is_base_of_v<Setting, T>,
-            "Setting must inherit from the Setting class"
+    class GEODE_DLL SettingChangedFilter : public EventFilter<SettingChangedEvent> {
+    protected:
+        std::string m_modID;
+        std::optional<std::string> m_targetKey;
+
+    public:
+        using Callback = void(SettingValue*);
+
+        ListenerResult handle(utils::MiniFunction<Callback> fn, SettingChangedEvent* event);
+        /**
+         * Listen to changes on a setting, or all settings
+         * @param modID Mod whose settings to listen to
+         * @param settingID Setting to listen to, or all settings if nullopt
+         */
+        SettingChangedFilter(
+            std::string const& modID,
+            std::optional<std::string> const& settingKey
         );
+    };
 
-	protected:
-		Consumer m_consumer;
-		std::string m_modID;
-		std::optional<std::string> m_targetKey;
-	
-	public:
-        PassThrough handle(SettingChangedEvent* event) override {
-            if (
-                m_modID == event->getModID() && (
-                !m_targetKey ||
-                m_targetKey.value() == event->getSetting()->getKey()
-            )) {
-                m_consumer(std::static_pointer_cast<T>(event->getSetting()));
-            }
-			return PassThrough::Propagate;
-		}
-
-        /**
-         * Listen to changes on a specific setting
-         */
-		SettingChangedEventHandler(
-			std::string const& modID,
-			std::string const& settingID,
-			Consumer handler
-		) : m_modID(modID),
-            m_targetKey(settingID),
-            m_consumer(handler) {}
-
-        /**
-         * Listen to changes on all of a mods' settings
-         */
-		SettingChangedEventHandler(
-			std::string const& modID,
-			Consumer handler
-		) : m_modID(modID),
-            m_targetKey(std::nullopt),
-            m_consumer(handler) {}
-	};
-
+    /**
+     * Listen for built-in setting changes
+     */
     template<class T>
-        requires std::is_base_of_v<Setting, T>
+    class GeodeSettingChangedFilter : public SettingChangedFilter {
+    public:
+        using Callback = void(T);
+
+        ListenerResult handle(utils::MiniFunction<Callback> fn, SettingChangedEvent* event) {
+            if (
+                m_modID == event->mod->getID() &&
+                (!m_targetKey || m_targetKey.value() == event->value->getKey())
+            ) {
+                fn(SettingValueSetter<T>::get(event->value));
+            }
+            return ListenerResult::Propagate;
+        }
+
+        GeodeSettingChangedFilter(
+            std::string const& modID,
+            std::string const& settingID
+        ) : SettingChangedFilter(modID, settingID) {}
+    };
+
+    template <class T>
     std::monostate listenForSettingChanges(
-        std::string const& settingID,
-        void(*callback)(std::shared_ptr<T>)
+        std::string const& settingKey, void (*callback)(T)
     ) {
-        Loader::get()->scheduleOnModLoad(getMod(), [=]() {
-            static SettingChangedEventHandler<T> _(
-                getMod()->getID(), settingID, callback
-            );
-        });
+        (void)new EventListener(
+            callback, GeodeSettingChangedFilter<T>(getMod()->getID(), settingKey)
+        );
         return std::monostate();
     }
 
-    static std::monostate listenForAllSettingChanges(
-        void(*callback)(std::shared_ptr<Setting>)
-    ) {
-        Loader::get()->scheduleOnModLoad(getMod(), [=]() {
-            static SettingChangedEventHandler<Setting> _(
-                getMod()->getID(), callback
-            );
-        });
+    static std::monostate listenForAllSettingChanges(void (*callback)(SettingValue*)) {
+        (void)new EventListener(
+            callback, SettingChangedFilter(getMod()->getID(), std::nullopt)
+        );
         return std::monostate();
     }
 }
-

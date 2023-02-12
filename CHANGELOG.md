@@ -1,5 +1,48 @@
 # Geode Changelog
 
+## v1.0.0-alpha
+
+ - Major rework of the entire framework; most notable changes include switching to a whole new hooking framework (TulipHook), simplifying many parts of the framework, and making it production-ready.
+
+## v0.7.0
+ - Jesus H. Christmas Kallen there's like 300 new commits since v0.6.1 I don't think there's a point in listing them all, we basically redesigned the whole framework
+
+## v0.6.1
+ - Add `geode::cocos::switchToScene` utility for easily switching to a layer with the default fade transition
+ - Add `Mod::getPackagePath` as a replacement for `Mod::getPath`
+ - Add `geode/config` directory as a standardized place for mods to add their config files
+ - Add `Mod::getConfigDir` for getting a mods' config directory
+ - Add open config directory button to mods with a config directory
+ - Add open save directory button to mods' settings popup
+ - Removed deprecation from `Result` (it still will be replaced in v1.0.0, we just got tired of the warnings)
+ - `JsonChecker<nlohmann::json>` and `JsonChecker<nlohmann::ordered_json>` are now defined in-source as exported symbols to speed up compilation times
+ - Add more bindings
+
+## v0.6.0
+
+ - Mod resource loading has been reworked again, with the intent of adding support for texture pack loaders
+ - Added `Loader::addTexturePath` and `Loader::removeTexturePath` to work with additional resource paths
+ - Mods that work with Cocos2d search paths directly should convert to using the above functions
+ - New header `Geode/ui/LayerBG.hpp` with `createLayerBG` function for creating the blue gradient background GD layers have
+ - All Cocos2d include paths have been changed to be relative
+ - `cocos2dx` folder has been removed, cocos2d is now directly inside `Geode/cocos`
+ - Loader resources updating will no longer check for plist file differences due to problems with CLI on Mac
+ - More codegen optimizations, Geode mods should now compile faster
+ - Added `NewResult` class, which will eventually replace the old `Result`
+ - Add `deprecate` and `nodiscard` attributes to the old `Result` class
+ - Cocos2d selectors (like `SEL_MenuHandler`) no longer require `using namespace cocos2d`
+ - Many more bindings on Mac and Windows
+ - Add IDs to `LevelSearchLayer` (thank you @Jollycistaken)
+
+## v0.5.0
+
+ - Added `CCFileUtils::get`
+ - Fix crashes related to setting IDs in `MenuLayer`
+ - Remove `Loader::updateModResourcePaths` and `Loader::updateResourcePaths`. The minimum mod target version is still v0.4.0 however, as you should never have been using these functions.
+ - Rework how mod resources are added
+ - Deprecate `geode::utils::vector` and `geode::utils::container` namespaces and replace them with `geode::utils::ranges`
+ - Finally added a license to Geode! The framework is now licensed under BSL v1.0.
+
 ## v0.4.8
 
  - CLI issues fixed in v1.0.6 so loader again verifies if loader resources are missing / corrupt on startup

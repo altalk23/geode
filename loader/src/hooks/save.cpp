@@ -3,17 +3,18 @@
 USE_GEODE_NAMESPACE();
 
 #include <Geode/modify/AppDelegate.hpp>
-class $modify(AppDelegate) {
-    void trySaveGame() {
-        log::log(Severity::Info, Loader::getInternalMod(), "Saving...");
 
-        auto r = Loader::get()->saveSettings();
+struct SaveLoader : Modify<SaveLoader, AppDelegate> {
+    void trySaveGame() {
+        log::info("Saving...");
+
+        auto r = Loader::get()->saveData();
         if (!r) {
-            log::log(Severity::Error, Loader::getInternalMod(), "{}", r.error());
+            log::info("{}", r.unwrapErr());
         }
 
-        log::log(Severity::Info, Loader::getInternalMod(), "Saved");
-        
+        log::info("Saved");
+
         return AppDelegate::trySaveGame();
     }
 };

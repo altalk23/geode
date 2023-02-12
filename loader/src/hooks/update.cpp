@@ -1,11 +1,12 @@
-#include <InternalLoader.hpp>
+#include <loader/LoaderImpl.hpp>
 
 USE_GEODE_NAMESPACE();
 
 #include <Geode/modify/CCScheduler.hpp>
-class $modify(CCScheduler) {
+
+struct FunctionQueue : Modify<FunctionQueue, CCScheduler> {
     void update(float dt) {
-        InternalLoader::get()->executeGDThreadQueue();
+        LoaderImpl::get()->executeGDThreadQueue();
         return CCScheduler::update(dt);
     }
 };

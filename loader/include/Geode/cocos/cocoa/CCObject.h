@@ -48,11 +48,12 @@ NS_CC_BEGIN
  */
 
 RT_ADD(
-    typedef enum {
-        kCCObjectTypePlayLayer = 5,
-        kCCObjectTypeLevelEditorLayer = 6,
-        kCCObjectTypeMenuLayer = 15,
-    } CCObjectType;
+    // please someone tell we why in higher being(s)'s name rob did this
+    enum class CCObjectType {
+        PlayLayer = 5,
+        LevelEditorLayer = 6,
+        MenuLayer = 15,
+    };
 )
 
 class CCZone;
@@ -78,21 +79,11 @@ public:
  */
 class CCDestructor : public CCCopying {
 private:
-	static inline auto& destructorLock() {
-		static auto ret = new std::unordered_map<void*, bool>;
-		return *ret;
-	}
+	static std::unordered_map<void*, bool>& destructorLock();
 public:
-	static inline bool& globalLock() {
-		static thread_local bool ret = false;
-		return ret; 
-	}
-	static inline bool& lock(void* self) {
-		return destructorLock()[self];
-	}
-	inline ~CCDestructor() {
-		destructorLock().erase(this);
-	}
+	static bool& globalLock();
+	static bool& lock(void* self);
+	~CCDestructor();
 };
 
 #pragma warning(push)
@@ -156,8 +147,6 @@ public:
         inline void setObjType(CCObjectType type) {
         	m_eObjType = type;
         }
-    
-        //i have no idea if vtable function order matters so 
     )
 
     friend class CCAutoreleasePool;
@@ -173,14 +162,14 @@ typedef void (CCObject::*SEL_MenuHandler)(CCObject*);
 typedef void (CCObject::*SEL_EventHandler)(CCEvent*);
 typedef int (CCObject::*SEL_Compare)(CCObject*);
 
-#define schedule_selector(_SELECTOR) (SEL_SCHEDULE)(&_SELECTOR)
-#define callfunc_selector(_SELECTOR) (SEL_CallFunc)(&_SELECTOR)
-#define callfuncN_selector(_SELECTOR) (SEL_CallFuncN)(&_SELECTOR)
-#define callfuncND_selector(_SELECTOR) (SEL_CallFuncND)(&_SELECTOR)
-#define callfuncO_selector(_SELECTOR) (SEL_CallFuncO)(&_SELECTOR)
-#define menu_selector(_SELECTOR) (SEL_MenuHandler)(&_SELECTOR)
-#define event_selector(_SELECTOR) (SEL_EventHandler)(&_SELECTOR)
-#define compare_selector(_SELECTOR) (SEL_Compare)(&_SELECTOR)
+#define schedule_selector(...) (cocos2d::SEL_SCHEDULE)(&__VA_ARGS__)
+#define callfunc_selector(...) (cocos2d::SEL_CallFunc)(&__VA_ARGS__)
+#define callfuncN_selector(...) (cocos2d::SEL_CallFuncN)(&__VA_ARGS__)
+#define callfuncND_selector(...) (cocos2d::SEL_CallFuncND)(&__VA_ARGS__)
+#define callfuncO_selector(...) (cocos2d::SEL_CallFuncO)(&__VA_ARGS__)
+#define menu_selector(...) (cocos2d::SEL_MenuHandler)(&__VA_ARGS__)
+#define event_selector(...) (cocos2d::SEL_EventHandler)(&__VA_ARGS__)
+#define compare_selector(...) (cocos2d::SEL_Compare)(&__VA_ARGS__)
 
 // end of base_nodes group
 /// @}

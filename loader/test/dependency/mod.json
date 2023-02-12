@@ -1,10 +1,13 @@
 {
-    "geode":        "v0.4.1",
-	"version":      "v1.0.0",
+    "geode":        "0.6.1",
+	"version":      "1.0.0",
 	"id":           "geode.testdep",
     "name":         "Geode Test Dependency",
     "developer":    "Geode Team",
     "description":  "Unit test dependency for Geode",
+    "api": {
+        "include": []
+    },
     "settings": {
         "its-raining-after-all": {
             "type": "bool",
@@ -76,6 +79,9 @@
                     }
                 ]
             }
+        },
+        "overcast-skies": {
+            "type": "custom"
         }
     }
 }

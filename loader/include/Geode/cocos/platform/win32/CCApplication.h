@@ -15,6 +15,7 @@ class CC_DLL CCApplication : public CCApplicationProtocol
 {
     GEODE_FRIEND_MODIFY
 public:
+    GEODE_MONOSTATE_CONSTRUCTOR_BEGIN(CCApplication)
     CCApplication();
     virtual ~CCApplication();
 
@@ -30,9 +31,7 @@ public:
     */
     static CCApplication* sharedApplication();
 
-    GEODE_ADD(
-        static CCApplication* get();
-    );
+    static GEODE_DLL CCApplication* get();
 
     /* override functions */
     virtual void setAnimationInterval(double interval);

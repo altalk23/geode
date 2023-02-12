@@ -1,3 +1,5 @@
+// clang-format off
+
 class cocos2d::CCActionTween {
 	static cocos2d::CCActionTween* create(float, char const*, float, float) = mac 0x447590;
 }
@@ -26,23 +28,24 @@ class cocos2d::CCApplication {
 }
 
 class cocos2d::CCArray {
-	auto addObject(cocos2d::CCObject*) = mac 0x419f90, ios 0x16504c;
+	// auto addObject(cocos2d::CCObject*) = mac 0x419f90, ios 0x16504c;
 	auto addObjectNew(cocos2d::CCObject*) = mac 0x41a450;
-	auto addObjectsFromArray(cocos2d::CCArray*) = mac 0x41a2d0;
-	auto containsObject(cocos2d::CCObject*) const = mac 0x41a3e0;
-	auto count() const = mac 0x41a2f0, ios 0x1650e8;
-	static cocos2d::CCArray* create() = mac 0x419cb0, ios 0x164ec8;
-	static auto createWithObject(cocos2d::CCObject*) = mac 0x419d50;
-	auto fastRemoveObject(cocos2d::CCObject*) = mac 0x41a520;
-	auto fastRemoveObjectAtIndex(unsigned int) = mac 0x41a500;
+	// auto addObjectsFromArray(cocos2d::CCArray*) = mac 0x41a2d0;
+	// auto containsObject(cocos2d::CCObject*) const = mac 0x41a3e0;
+	// auto count() const = mac 0x41a2f0, ios 0x1650e8;
+	// static cocos2d::CCArray* create() = mac 0x419cb0, ios 0x164ec8;
+	// static auto createWithObject(cocos2d::CCObject*) = mac 0x419d50;
+	// auto fastRemoveObject(cocos2d::CCObject*) = mac 0x41a520;
+	// auto fastRemoveObjectAtIndex(unsigned int) = mac 0x41a500;
 	auto fastRemoveObjectAtIndexNew(unsigned int) = mac 0x41a510;
-	auto lastObject() = mac 0x41a360;
-	auto objectAtIndex(unsigned int) = mac 0x41a340, ios 0x16510c;
-	auto removeAllObjects() = mac 0x41a4f0, ios 0x1651f0;
-	auto removeLastObject(bool) = mac 0x41a470;
-	auto removeObject(cocos2d::CCObject*, bool) = mac 0x41a490;
-	auto removeObjectAtIndex(unsigned int, bool) = mac 0x41a4b0;
-	auto stringAtIndex(unsigned int) = mac 0x41a320;
+	// auto insertObject(cocos2d::CCObject*, unsigned int) = mac 0x41a460;
+	// auto lastObject() = mac 0x41a360;
+	// auto objectAtIndex(unsigned int) = mac 0x41a340, ios 0x16510c;
+	// auto removeAllObjects() = mac 0x41a4f0, ios 0x1651f0;
+	// auto removeLastObject(bool) = mac 0x41a470;
+	// auto removeObject(cocos2d::CCObject*, bool) = mac 0x41a490;
+	// auto removeObjectAtIndex(unsigned int, bool) = mac 0x41a4b0;
+	// auto stringAtIndex(unsigned int) = mac 0x41a320;
 }
 
 class cocos2d::CCBezierTo {
@@ -125,6 +128,7 @@ class cocos2d::CCDirector {
 	auto calculateMPF() = mac 0x19eac0;
 	auto convertToGL(cocos2d::CCPoint const&) = mac 0x24a210;
 	auto drawScene() = mac 0x249690;
+	auto willSwitchToScene(cocos2d::CCScene* scene);
 
 	auto setNextScene() = mac 0x2498d0;
 	auto showStats() = mac 0x2499e0;
@@ -138,6 +142,8 @@ class cocos2d::CCDrawNode {
 	static cocos2d::CCDrawNode* create() = mac 0x378d00;
 	auto drawPolygon(cocos2d::CCPoint*, unsigned int, cocos2d::_ccColor4F const&, float, cocos2d::_ccColor4F const&) = mac 0x3797f0;
 	auto drawSegment(cocos2d::CCPoint const&, cocos2d::CCPoint const&, float, cocos2d::_ccColor4F const&) = mac 0x3792d0;
+	auto drawDot(cocos2d::CCPoint const&, float, cocos2d::_ccColor4F const&) = mac 0x379100;
+
 	auto getBlendFunc() const = mac 0x379ea0;
 	auto init() = mac 0x378e00;
 	auto setBlendFunc(cocos2d::_ccBlendFunc const&) = mac 0x379eb0;
@@ -202,7 +208,16 @@ class cocos2d::CCFadeTo {
 
 class cocos2d::CCFileUtils : cocos2d::TypeInfo {
 	static cocos2d::CCFileUtils* sharedFileUtils() = mac 0x377030, ios 0x159450;
+	static void purgeFileUtils();
+    virtual void addSearchPath(const char* path);
+	virtual void removeSearchPath(const char *path);
     virtual std::string fullPathForFilename(const char* filename, bool unk);
+    void removeAllPaths() = mac 0x241600;
+}
+
+class cocos2d::CCGLProgram {
+	auto setUniformsForBuiltins() = mac 0x232c70;
+	auto use() = mac 0x231d70;
 }
 
 class cocos2d::CCHide {
@@ -224,6 +239,8 @@ class cocos2d::CCIMEDispatcher {
 	static auto sharedDispatcher() = mac 0x2773f0, ios 0x12d170;
 	auto addDelegate(cocos2d::CCIMEDelegate*) = mac 0x277480, ios 0x12d204;
 	auto removeDelegate(cocos2d::CCIMEDelegate*) = mac 0x2775f0, ios 0x12d2c4;
+	void dispatchInsertText(const char* text, int len) = mac 0x277ac0;
+	void dispatchDeleteBackward() = mac 0x277af0;
 }
 
 class cocos2d::CCImage {
@@ -255,9 +272,8 @@ class cocos2d::CCLabelBMFont {
 	static cocos2d::CCLabelBMFont* create(char const*, char const*) = mac 0x347660;
 	auto limitLabelWidth(float, float, float) = mac 0x34a6e0, ios 0x21b740;
 
-	virtual ~CCLabelBMFont() = mac 0x347e80, ios 0x219afc;
-
 	virtual auto init() = mac 0x347b10, ios 0x2198e0;
+	bool initWithString(const char* str, const char* fnt, float width, cocos2d::CCTextAlignment align, cocos2d::CCPoint offset);
 	virtual auto setScaleX(float) = mac 0x34a5b0, ios 0x21b6e8;
 	virtual auto setScaleY(float) = mac 0x34a5d0, ios 0x21b714;
 	virtual auto setScale(float) = mac 0x34a590, ios 0x21b6bc;
@@ -285,6 +301,7 @@ class cocos2d::CCLabelBMFont {
 	virtual auto isCascadeColorEnabled() = mac 0x3493c0, ios 0x21aa3c;
 	virtual auto setCascadeColorEnabled(bool) = mac 0x3493e0, ios 0x21aa4c;
 	virtual auto setString(unsigned short*, bool) = mac 0x348a60, ios 0x21a4b4;
+	virtual ~CCLabelBMFont() = mac 0x347e80;
 }
 
 class cocos2d::CCLabelTTF {
@@ -428,7 +445,7 @@ class cocos2d::CCMenuItemLabel {
 
 class cocos2d::CCMenuItemSprite {
 	// virtual ~CCMenuItemSprite() = mac 0x1feab0;
-	virtual auto selected() = mac 0x1fd3f0, ios 0x02d2cc;
+	virtual auto selected() = mac 0x1fd3f0, ios 0x2d2cc;
 	virtual auto unselected() = mac 0x1fd470, ios 0x2d34c;
 	virtual auto setEnabled(bool) = mac 0x1fd4e0, ios 0x2d3bc;
 	virtual auto getNormalImage() = mac 0x1fcee0, ios 0x2cf68;
@@ -480,11 +497,11 @@ class cocos2d::CCNode {
     virtual auto addChild(cocos2d::CCNode*, int, int) = mac 0x1232a0, ios 0x15e4e4;
     virtual auto addComponent(cocos2d::CCComponent*) = mac 0x124a40, ios 0x15f6a4;
     virtual auto cleanup() = mac 0x123100, ios 0x15e3a4;
-    virtual auto convertToNodeSpace(cocos2d::CCPoint const&) = mac 0x124750, ios 0x15f55c;
-    virtual auto convertToWorldSpace(cocos2d::CCPoint const&) = mac 0x124790;
+    auto convertToNodeSpace(cocos2d::CCPoint const&) = mac 0x124750, ios 0x15f55c;
+    auto convertToWorldSpace(cocos2d::CCPoint const&) = mac 0x124790;
     static cocos2d::CCNode* create() = mac 0x1230a0;
     virtual auto draw() = mac 0x123840, ios 0x15e974;
-    virtual auto getActionByTag(int) = mac 0x123ee0;
+    auto getActionByTag(int) = mac 0x123ee0;
     virtual auto getActionManager() = mac 0x123e50, ios 0x15ef54;
     virtual auto getAnchorPoint() = mac 0x122d80, ios 0x15e090;
     virtual auto getAnchorPointInPoints() = mac 0x122d70, ios 0x15e088;
@@ -528,7 +545,7 @@ class cocos2d::CCNode {
     virtual auto onExit() = mac 0x123ca0, ios 0x15edb0;
     virtual auto onExitTransitionDidStart() = mac 0x123c00, ios 0x15ed18;
     virtual auto parentToNodeTransform() = mac 0x1245d0, ios 0x15f410;
-    virtual auto pauseSchedulerAndActions() = mac 0x123d60;
+    auto pauseSchedulerAndActions() = mac 0x123d60;
     virtual auto registerScriptHandler(int) = mac 0x123d90, ios 0x15ee94;
     virtual auto removeAllChildren() = mac 0x123600, ios 0x15e788;
     virtual auto removeAllChildrenWithCleanup(bool) = mac 0x123620, ios 0x15e798;
@@ -543,11 +560,11 @@ class cocos2d::CCNode {
     virtual auto removeFromParentAndCleanup(bool) = mac 0x123410, ios 0x15e5f8;
     virtual auto removeMeAndCleanup() = mac 0x123440, ios 0x15e620;
     virtual auto reorderChild(cocos2d::CCNode*, int) = mac 0x123760, ios 0x15e87c;
-    virtual auto resumeSchedulerAndActions() = mac 0x123b60;
-    virtual auto runAction(cocos2d::CCAction*) = mac 0x123e60;
-    virtual auto schedule(cocos2d::SEL_SCHEDULE) = mac 0x1240b0;
-    virtual auto schedule(cocos2d::SEL_SCHEDULE, float) = mac 0x124120;
-    virtual auto scheduleUpdate() = mac 0x123f80;
+    auto resumeSchedulerAndActions() = mac 0x123b60;
+    auto runAction(cocos2d::CCAction*) = mac 0x123e60;
+    auto schedule(cocos2d::SEL_SCHEDULE) = mac 0x1240b0;
+    auto schedule(cocos2d::SEL_SCHEDULE, float) = mac 0x124120;
+    auto scheduleUpdate() = mac 0x123f80;
     virtual auto setActionManager(cocos2d::CCActionManager*) = mac 0x123e00, ios 0x15ef04;
     virtual auto setAnchorPoint(cocos2d::CCPoint const&) = mac 0x122d90, ios 0x15e098;
     virtual auto setContentSize(cocos2d::CCSize const&) = mac 0x122e50, ios 0x15e158;
@@ -576,12 +593,12 @@ class cocos2d::CCNode {
     virtual auto setVisible(bool) = mac 0x122d60, ios 0x15e080;
     virtual auto setZOrder(int) = mac 0x1229a0, ios 0x15dd84;
     virtual auto sortAllChildren() = mac 0x1237b0, ios 0x15e8d4;
-    virtual auto stopActionByTag(int) = mac 0x123ec0;
-    virtual auto stopAllActions() = mac 0x123190;
+    auto stopActionByTag(int) = mac 0x123ec0;
+    auto stopAllActions() = mac 0x123190;
     virtual auto unregisterScriptHandler() = mac 0x123dc0, ios 0x15eec4;
-    virtual auto unschedule(cocos2d::SEL_SCHEDULE) = mac 0x124180;
-    virtual auto unscheduleAllSelectors() = mac 0x1231b0;
-    virtual auto unscheduleUpdate() = mac 0x124060;
+    auto unschedule(cocos2d::SEL_SCHEDULE) = mac 0x124180;
+    auto unscheduleAllSelectors() = mac 0x1231b0;
+    auto unscheduleUpdate() = mac 0x124060;
     virtual auto update(float) = mac 0x1241a0, ios 0x15f124;
     virtual auto updateTransform() = mac 0x1249d0, ios 0x15f648;
     virtual auto updateTweenAction(float, char const*) = mac 0x1249c0, ios 0x15f644;
@@ -650,6 +667,7 @@ class cocos2d::CCRenderTexture {
 	auto end() = mac 0x35d2c0;
 	static cocos2d::CCRenderTexture* create(int, int, cocos2d::CCTexture2DPixelFormat) = mac 0x35c720;
 	auto newCCImage(bool) = mac 0x35d7d0;
+	auto saveToFile(char const*) = mac 0x35dab0;
 }
 
 class cocos2d::CCRepeat {
@@ -695,6 +713,11 @@ class cocos2d::CCSet {
 	virtual ~CCSet() = mac 0x45b050, ios 0x10ebcc;
 	virtual auto acceptVisitor(cocos2d::CCDataVisitor&) = mac 0x45b090, ios 0x10ec04;
 	auto anyObject() = mac 0x45b410;
+}
+
+class cocos2d::CCShaderCache {
+	static auto sharedShaderCache() = mac 0xe6d10;
+	auto programForKey(const char*) = mac 0xe7d40;
 }
 
 class cocos2d::CCSprite {
@@ -818,6 +841,7 @@ class cocos2d::CCString {
 	virtual auto isEqual(cocos2d::CCObject const*) = mac 0x44c8f0, ios 0x1a1e6c;
 	virtual auto acceptVisitor(cocos2d::CCDataVisitor&) = mac 0x44ccb0, ios 0x1a2168;
 	virtual cocos2d::CCObject* copyWithZone(cocos2d::CCZone*) = mac 0x44c870, ios 0x1a1e14;
+	static cocos2d::CCString* createWithData(unsigned char const*, unsigned long) = mac 0x44c9d0;
 	// cocos2d::CCString::create(gd::string const&) = mac 0x44c960;
 	// CCString(gd::string const&) = mac 0x44c310;
 	auto boolValue() const = mac 0x44c810, ios 0x1a1d88;
@@ -939,6 +963,9 @@ class cocos2d::extension::CCControlColourPicker {
     auto ccTouchBegan(cocos2d::CCTouch*, cocos2d::CCEvent*) = mac 0x1aae10;
     auto init() = mac 0x1aa400;
     static auto colourPicker() = mac 0x1aaa30;
+    cocos2d::ccColor3B const& getColorValue() const {
+    	return m_rgb;
+    }
 
 }
 
@@ -951,6 +978,7 @@ class cocos2d::extension::CCScale9Sprite {
     CCScale9Sprite() = mac 0x211330;
     static cocos2d::extension::CCScale9Sprite* create(char const*) = mac 0x2130d0;
     static cocos2d::extension::CCScale9Sprite* create(char const*, cocos2d::CCRect) = mac 0x212ef0;
+    static cocos2d::extension::CCScale9Sprite* create(char const*, cocos2d::CCRect, cocos2d::CCRect) = mac 0x212dd0;
     static cocos2d::extension::CCScale9Sprite* createWithSpriteFrameName(char const*, cocos2d::CCRect) = mac 0x213380;
     static cocos2d::extension::CCScale9Sprite* createWithSpriteFrameName(char const*) = mac 0x213460;
     virtual ~CCScale9Sprite() = mac 0x211590;
@@ -1012,6 +1040,8 @@ class cocos2d::extension::CCScrollView {
 class cocos2d {
 	static auto ccGLBlendFunc(GLenum, GLenum) = mac 0x1ae560;
 	static auto ccDrawSolidRect(cocos2d::CCPoint, cocos2d::CCPoint, cocos2d::_ccColor4F) = mac 0xecf00;
+	static auto ccGLEnableVertexAttribs(unsigned int) = mac 0x1ae740;
+	static auto ccGLBindTexture2D(GLuint) = mac 0x1ae610;
 }
 
 // class DS_Dictionary {
@@ -1019,3 +1049,5 @@ class cocos2d {
 // 	int getIntegerForKey(char const*) = mac 0xc1610;
 // 	void setIntegerForKey(char const*, int) = mac 0xc26b0;
 // }
+
+// clang-format on

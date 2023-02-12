@@ -3,7 +3,7 @@
 using namespace cocos2d;
 
 #pragma warning(push)
-#pragma warning(disable: 4273)
+#pragma warning(disable : 4273)
 
 CCKeyboardDispatcher* CCKeyboardDispatcher::get() {
     return CCDirector::get()->getKeyboardDispatcher();
@@ -27,6 +27,14 @@ CCEGLView* CCEGLView::get() {
 
 CCFileUtils* CCFileUtils::get() {
     return CCFileUtils::sharedFileUtils();
+}
+
+CCSpriteFrameCache* CCSpriteFrameCache::get() {
+    return CCSpriteFrameCache::sharedSpriteFrameCache();
+}
+
+CCTextureCache* CCTextureCache::get() {
+    return CCTextureCache::sharedTextureCache();
 }
 
 #pragma warning(pop)
