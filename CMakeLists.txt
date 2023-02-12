@@ -53,19 +53,34 @@ set(GEODE_LOADER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/loader)
 include(cmake/GeodeFile.cmake)
 include(cmake/Platform.cmake)
 include(cmake/CPM.cmake)
-include(cmake/GdString.cmake)
 
-geode_relink_gd_string(${PROJECT_NAME})
+CPMAddPackage("gh:geode-sdk/json#2b76460")
+CPMAddPackage("gh:fmtlib/fmt#9.1.0")
+CPMAddPackage("gh:gulrak/filesystem#3e5b930")
+
+# Tulip hook (hooking)
+if (PROJECT_IS_TOP_LEVEL AND NOT GEODE_BUILDING_DOCS)
+	set(TULIP_LINK_SOURCE ON)
+endif()
+CPMAddPackage("gh:geode-sdk/TulipHook#a00e2c6")
+
 
 target_sources(${PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/entry.cpp)
+
+# Filesystem implementation in a separate target because i couldnt disable pch
+add_library(GeodeFilesystemImpl ${CMAKE_CURRENT_SOURCE_DIR}/FilesystemImpl.cpp)
+target_compile_features(GeodeFilesystemImpl PUBLIC cxx_std_20)
+target_link_libraries(GeodeFilesystemImpl PUBLIC ghc_filesystem)
 
 include(ExternalProject)
 set(GEODE_CODEGEN_BINARY_OUT ${CMAKE_CURRENT_BINARY_DIR}/codegen)
 ExternalProject_Add(CodegenProject
 	BUILD_ALWAYS ON
 	SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/codegen
-	CMAKE_CACHE_ARGS "-DCMAKE_INSTALL_PREFIX:STRING=${GEODE_CODEGEN_BINARY_OUT}"
-	CMAKE_ARGS ${GEODE_CODEGEN_CMAKE_ARGS}
+	# manually set configure command as to not inherit generator used by geode,
+	# this should hopefully fix generator cache mismatch between different projects, however
+	# it causes a warning to be shown every time. if you know a better solution please tell us ok thx
+	CONFIGURE_COMMAND ${CMAKE_COMMAND} ${GEODE_CODEGEN_CMAKE_ARGS} -DCMAKE_INSTALL_PREFIX:STRING=${GEODE_CODEGEN_BINARY_OUT} -S <SOURCE_DIR> -B <BINARY_DIR>
 )
 
 
@@ -106,7 +121,7 @@ endif()
 
 add_library(GeodeCodegenSources ${GEODE_CODEGEN_PATH}/Geode/GeneratedSource.cpp ${GEODE_CODEGEN_PATH}/Geode/GeneratedAddress.cpp)
 target_link_directories(GeodeCodegenSources PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/loader/include/link)
-target_link_libraries(GeodeCodegenSources PRIVATE ghc_filesystem fmt TulipHookInclude)
+target_link_libraries(GeodeCodegenSources PRIVATE ghc_filesystem GeodeFilesystemImpl fmt TulipHookInclude)
 target_include_directories(GeodeCodegenSources PRIVATE
 	${GEODE_CODEGEN_PATH}
 	${GEODE_LOADER_PATH}/include
@@ -130,17 +145,7 @@ target_include_directories(${PROJECT_NAME} INTERFACE
 )
 target_link_directories(${PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/loader/include/link)
 
-CPMAddPackage("gh:geode-sdk/json#2b76460")
-CPMAddPackage("gh:fmtlib/fmt#9.1.0")
-CPMAddPackage("gh:gulrak/filesystem#3e5b930")
-
-# Tulip hook (hooking)
-if (PROJECT_IS_TOP_LEVEL AND NOT GEODE_BUILDING_DOCS)
-	set(TULIP_LINK_SOURCE ON)
-endif()
-CPMAddPackage("gh:geode-sdk/TulipHook#76984a4")
-
-target_link_libraries(${PROJECT_NAME} INTERFACE ghc_filesystem fmt TulipHookInclude GeodeCodegenSources mat-json)
+target_link_libraries(${PROJECT_NAME} INTERFACE ghc_filesystem fmt TulipHookInclude GeodeCodegenSources mat-json GeodeFilesystemImpl)
 
 
 if (NOT EXISTS ${GEODE_BIN_PATH})
@@ -172,8 +177,8 @@ elseif(EXISTS ${GEODE_PLATFORM_BIN_PATH})
 	)
 else()
 	message(FATAL_ERROR
-		"No valid loader binary to link to! Install prebuilts with `geode sdk install-prebuilts`, "
-		"or build Geode from source and add `set(GEODE_LINK_NIGHTLY On)` to your CMakeLists.txt "
+		"No valid loader binary to link to! Install prebuilts with `geode sdk install-binaries`, "
+		"or build Geode from source and add `set(GEODE_LINK_NIGHTLY ON)` to your CMakeLists.txt "
 		"in the line before calling add_subdirectory for Geode."
 	)
 endif()

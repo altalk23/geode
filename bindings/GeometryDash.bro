@@ -22,8 +22,10 @@ class AchievementBar : cocos2d::CCNodeRGBA {
     PAD = win 0x24;
 }
 
-class AchievementCell {
+class AchievementCell : cocos2d::CCLayer {
     void loadFromDict(cocos2d::CCDictionary*) = mac 0x10eaa0, win 0x59010;
+
+    virtual bool init() = win 0x11070;
 }
 
 class AchievementManager : cocos2d::CCNode {
@@ -857,7 +859,16 @@ class CreatorLayer : cocos2d::CCLayer {
     void onChallenge(cocos2d::CCObject*) = win 0x4f1b0;
     void onLeaderboards(cocos2d::CCObject*) = win 0x4ed20;
     void onMyLevels(cocos2d::CCObject*) = mac 0x142b70, win 0x4eaa0;
-    void onSavedLevels(cocos2d::CCObject*) = mac 0x142860;
+    void onSavedLevels(cocos2d::CCObject*) = mac 0x142860, win 0x4ebe0;
+    void onDailyLevel(cocos2d::CCObject*) = win 0x4f170;
+    void onWeeklyLevel(cocos2d::CCObject*) = win 0x4f190;
+    void onFeaturedLevels(cocos2d::CCObject*) = win 0x4edf0;
+    void onFameLevels(cocos2d::CCObject*) = win 0x4ee70;
+    void onMapPacks(cocos2d::CCObject*) = win 0x4efb0;
+    void onOnlineLevels(cocos2d::CCObject*) = win 0x4ef60;
+    void onGauntlets(cocos2d::CCObject*) = win 0x4f0a0;
+    void onSecretVault(cocos2d::CCObject*) = win 0x4f1d0;
+    void onTreasureRoom(cocos2d::CCObject*) = win 0x4f540;
     virtual void sceneWillResume() = win 0x4fb50;
     virtual bool init() = mac 0x141c10, win 0x4de40;
     static CreatorLayer* create() = win 0x4dda0;
@@ -2307,10 +2318,14 @@ class GJMapPack : cocos2d::CCNode {
     cocos2d::ccColor3B m_barColour;
     int m_MId;
     bool m_isGauntlet;
+
+    virtual bool init() = win 0xc0080;
+    static GJMapPack *create() = win 0xbffe0;
 }
 
 class GJMessageCell : TableViewCell {
     void updateBGColor(unsigned int index) = win 0x5c6b0;
+    void loadFromMessage(GJUserMessage *) = win 0x64b60;
 }
 
 class GJOptionsLayer : FLAlertLayer {
@@ -2460,6 +2475,10 @@ class GJUserCell : TableViewCell {
     void updateBGColor(unsigned int index) = win 0x5c6b0;
 }
 
+class GJUserMessage : cocos2d::CCNode {
+    virtual bool init() = win 0x33b40;
+}
+
 class GJUserScore : cocos2d::CCNode {
     IconType getIconType() const { 
         return m_iconType; 
@@ -2566,6 +2585,12 @@ class GManager : cocos2d::CCNode {
 
 class GooglePlayDelegate {
     virtual void googlePlaySignedIn() {}
+}
+
+class GooglePlayManager : cocos2d::CCNode {
+    virtual bool init() = win 0x11070;
+
+    static GooglePlayManager *sharedState() = win 0x4295a0;
 }
 
 class GameLevelManager : cocos2d::CCNode {
@@ -3676,7 +3701,7 @@ class LevelEditorLayer : GJBaseGameLayer, LevelSettingsDelegate {
     bool m_previewMode;
     GJGroundLayer* m_groundLayer;
     std::string m_rawLevelString;
-    void* m_triggerHitbox;
+    void* m_triggerHitbox; // why are these std vector bruh
     std::vector<GameObject*> m_objectVector;
     std::vector<GameObject*> m_groupVector;
     std::vector<cocos2d::CCArray*> m_nestedObjects;
@@ -3899,11 +3924,15 @@ class LocalLevelManager : cocos2d::CCNode {
 
 class MapPackCell : TableViewCell {
     void updateBGColor(unsigned int index) = win 0x5c6b0;
+    void loadFromMapPack(GJMapPack *) = win 0x5cac0;
 }
 
 class MenuGameLayer {
     void resetPlayer() = mac 0x28fdc0, win 0x18f4b0;
+    void destroyPlayer() = win 0x190100;
     void update(float) = mac 0x28fa70, win 0x18f190;
+    virtual bool init() = win 0x18e770;
+    void updateColors() = win 0x18edd0;
 }
 
 class MenuLayer : cocos2d::CCLayer, FLAlertLayerProtocol, GooglePlayDelegate {
@@ -4015,6 +4044,10 @@ class OBB2D : cocos2d::CCNode {
 class ObjectManager : cocos2d::CCNode {
     static ObjectManager* instance() = win 0x2c2c0;
     void setup() = win 0x2c3b0;
+}
+
+class KeysLayer : cocos2d::CCLayer {
+    virtual bool init() = win 0x154560;
 }
 
 class ObjectToolbox : cocos2d::CCNode {
@@ -4849,7 +4882,13 @@ class SetIDLayer {
     static SetIDLayer* create(GameObject*) = mac 0x168f20, win 0x22eb90;
 }
 
-class SetIDPopup {}
+class SetIDPopup : FLAlertLayer, TextInputDelegate {
+    void valueChanged() = win 0x10a60;
+
+    bool init(int, int, int, gd::string, gd::string, bool, int) = win 0x143270;
+
+    static SetIDPopup *create(int, int, int, gd::string, gd::string, bool, int) = win 0x143130;
+}
 
 class SetIDPopupDelegate {
     virtual void setIDPopupClosed(SetIDPopup*, int) {}
@@ -5128,6 +5167,10 @@ class StatsCell : TableViewCell {
     virtual void draw() = mac 0x11bf80, win 0x59d40;
 }
 
+class StatsLayer : GJDropDownLayer {
+    static StatsLayer* create() = win 0x25BCF0;
+}
+
 class TableView : CCScrollLayerExt, CCScrollLayerExtDelegate {
     inline TableView() {}
     inline TableView(cocos2d::CCRect rect) : CCScrollLayerExt(rect) {}
@@ -5339,6 +5382,11 @@ class VideoOptionsLayer : FLAlertLayer {
 }
 
 class LevelTools {
+    static gd::string base64EncodeString(gd::string) = win 0x18b310;
     static gd::string base64DecodeString(gd::string) = mac 0x294510, win 0x18b3b0;
+    static GJGameLevel *getLevel(int, bool) = win 0x189370;
+    static bool verifyLevelIntegrity(gd::string, int) = win 0x18b180;
+    static float xPosForTime(float, cocos2d::CCArray*, int) = win 0x18acd0;
+    static float timeForXPos(float, cocos2d::CCArray*, int) = win 0x18ae70;
 }
 // clang-format on
