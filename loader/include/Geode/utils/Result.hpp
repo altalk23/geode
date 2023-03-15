@@ -8,6 +8,7 @@
 #include <string_view>
 #include <type_traits>
 #include <variant>
+#include <optional>
 
 namespace geode {
     namespace impl {
@@ -203,6 +204,50 @@ namespace geode {
         template <class U>
         [[nodiscard]] constexpr decltype(auto) errorOr(U&& val) const& {
             return this->Base::error_or(std::forward<U>(val));
+        }
+
+        /**
+         * Convert the result into an optional containing the value if Ok, and 
+         * nullopt if Err
+         */
+        [[nodiscard]] constexpr std::optional<T> ok() const& {
+            if (this->isOk()) {
+                return this->unwrap();
+            }
+            return std::nullopt;
+        }
+
+        /**
+         * Convert the result into an optional containing the value if Ok, and 
+         * nullopt if Err
+         */
+        [[nodiscard]] constexpr std::optional<T> ok() && {
+            if (this->isOk()) {
+                return this->unwrap();
+            }
+            return std::nullopt;
+        }
+
+        /**
+         * Convert the result into an optional containing the error if Err, and 
+         * nullopt if Ok
+         */
+        [[nodiscard]] constexpr std::optional<E> err() const& {
+            if (this->isErr()) {
+                return this->unwrapErr();
+            }
+            return std::nullopt;
+        }
+
+        /**
+         * Convert the result into an optional containing the error if Err, and 
+         * nullopt if Ok
+         */
+        [[nodiscard]] constexpr std::optional<E> err() && {
+            if (this->isErr()) {
+                return this->unwrapErr();
+            }
+            return std::nullopt;
         }
     };
 

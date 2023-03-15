@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-USE_GEODE_NAMESPACE();
+using namespace geode::prelude;
 
 Mod::Impl* ModImpl::getImpl(Mod* mod)  {
     return mod->m_impl.get();
@@ -356,7 +356,9 @@ Result<> Mod::Impl::enable() {
     }
 
     for (auto const& hook : m_hooks) {
-        GEODE_UNWRAP(this->enableHook(hook));
+        if (hook->getAutoEnable()) {
+            GEODE_UNWRAP(this->enableHook(hook));
+        }
     }
 
     for (auto const& patch : m_patches) {
@@ -498,7 +500,7 @@ Result<> Mod::Impl::enableHook(Hook* hook) {
     auto res = hook->enable();
     if (res) m_hooks.push_back(hook);
     else {
-        log::error("Can't enable hook {} for mod {}: {}", m_info.id(), res.unwrapErr());
+        log::error("Can't enable hook {} for mod {}: {}", hook->getDisplayName(), m_info.id(), res.unwrapErr());
     }
 
     return res;
@@ -689,6 +691,9 @@ Mod* Loader::Impl::createInternalMod() {
     auto& mod = Mod::sharedMod<>;
     if (!mod) {
         mod = new Mod(getModImplInfo());
+        mod->m_impl->m_binaryLoaded = true;
+        mod->m_impl->m_enabled = true;
+        m_mods.insert({ mod->getID(), mod });
     }
     return mod;
 }

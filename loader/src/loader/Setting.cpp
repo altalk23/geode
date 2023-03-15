@@ -1,5 +1,6 @@
 #include "../ui/internal/settings/GeodeSettingNode.hpp"
 
+#include <Geode/loader/Mod.hpp>
 #include <Geode/loader/Setting.hpp>
 #include <Geode/loader/SettingEvent.hpp>
 #include <Geode/loader/SettingNode.hpp>
@@ -8,7 +9,7 @@
 #include <Geode/utils/JsonValidation.hpp>
 #include <re2/re2.h>
 
-USE_GEODE_NAMESPACE();
+using namespace geode::prelude;
 
 template<class T>
 static void parseCommon(T& sett, JsonMaybeObject& obj) {
@@ -101,10 +102,12 @@ Result<ColorAlphaSetting> ColorAlphaSetting::parse(JsonMaybeObject& obj) {
 
 Result<Setting> Setting::parse(
     std::string const& key,
+    std::string const& mod,
     JsonMaybeValue& value
 ) {
     auto sett = Setting();
     sett.m_key = key;
+    sett.m_modID = mod;
     if (auto obj = value.obj()) {
         std::string type;
         obj.needs("type").into(type);
@@ -156,31 +159,34 @@ Result<Setting> Setting::parse(
     return Ok(sett);
 }
 
-Setting::Setting(std::string const& key, SettingKind const& kind)
-  : m_key(key), m_kind(kind) {}
+Setting::Setting(
+    std::string const& key,
+    std::string const& mod,
+    SettingKind const& kind
+) : m_key(key), m_modID(mod), m_kind(kind) {}
 
 std::unique_ptr<SettingValue> Setting::createDefaultValue() const {
     return std::visit(makeVisitor {
         [&](BoolSetting const& sett) -> std::unique_ptr<SettingValue> {
-            return std::make_unique<BoolSettingValue>(m_key, sett);
+            return std::make_unique<BoolSettingValue>(m_key, m_modID, sett);
         },
         [&](IntSetting const& sett) -> std::unique_ptr<SettingValue> {
-            return std::make_unique<IntSettingValue>(m_key, sett);
+            return std::make_unique<IntSettingValue>(m_key, m_modID, sett);
         },
         [&](FloatSetting const& sett) -> std::unique_ptr<SettingValue> {
-            return std::make_unique<FloatSettingValue>(m_key, sett);
+            return std::make_unique<FloatSettingValue>(m_key, m_modID, sett);
         },
         [&](StringSetting const& sett) -> std::unique_ptr<SettingValue> {
-            return std::make_unique<StringSettingValue>(m_key, sett);
+            return std::make_unique<StringSettingValue>(m_key, m_modID, sett);
         },
         [&](FileSetting const& sett) -> std::unique_ptr<SettingValue> {
-            return std::make_unique<FileSettingValue>(m_key, sett);
+            return std::make_unique<FileSettingValue>(m_key, m_modID, sett);
         },
         [&](ColorSetting const& sett) -> std::unique_ptr<SettingValue> {
-            return std::make_unique<ColorSettingValue>(m_key, sett);
+            return std::make_unique<ColorSettingValue>(m_key, m_modID, sett);
         },
         [&](ColorAlphaSetting const& sett) -> std::unique_ptr<SettingValue> {
-            return std::make_unique<ColorAlphaSettingValue>(m_key, sett);
+            return std::make_unique<ColorAlphaSettingValue>(m_key, m_modID, sett);
         },
         [&](auto const& sett) -> std::unique_ptr<SettingValue> {
             return nullptr;
@@ -214,12 +220,29 @@ std::optional<std::string> Setting::getDescription() const {
     }, m_kind);
 }
 
+std::string Setting::getModID() const {
+    return m_modID;
+}
+
 // SettingValue
 
-SettingValue::SettingValue(std::string const& key) : m_key(key) {}
+SettingValue::SettingValue(std::string const& key, std::string const& mod)
+  : m_key(key), m_modID(mod) {}
 
 std::string SettingValue::getKey() const {
     return m_key;
+}
+
+std::string SettingValue::getModID() const {
+    return m_modID;
+}
+
+void SettingValue::valueChanged() {
+    // this is actually p neat because now if the mod gets disabled this wont 
+    // post the event so that side-effect is automatically handled :3
+    if (auto mod = Loader::get()->getLoadedMod(m_modID)) {
+        SettingChangedEvent(mod, this).post();
+    }
 }
 
 // GeodeSettingValue & SettingValueSetter specializations
@@ -236,6 +259,7 @@ std::string SettingValue::getKey() const {
         type_##Setting                                                  \
     >::setValue(ValueType const& value) {                               \
         m_value = this->toValid(value).first;                           \
+        this->valueChanged();                                           \
     }                                                                   \
     template<>                                                          \
     Result<> GeodeSettingValue<                                         \
@@ -274,18 +298,6 @@ std::string SettingValue::getKey() const {
     GeodeSettingValue<type_##Setting>::toValid(         \
         typename type_##Setting::ValueType const& value \
     ) const
-
-// instantiate value setters
-
-namespace geode {
-    template struct SettingValueSetter<typename BoolSetting::ValueType>;
-    template struct SettingValueSetter<typename IntSetting::ValueType>;
-    template struct SettingValueSetter<typename FloatSetting::ValueType>;
-    template struct SettingValueSetter<typename StringSetting::ValueType>;
-    template struct SettingValueSetter<typename FileSetting::ValueType>;
-    template struct SettingValueSetter<typename ColorSetting::ValueType>;
-    template struct SettingValueSetter<typename ColorAlphaSetting::ValueType>;
-}
 
 // instantiate values
 
@@ -369,6 +381,18 @@ IMPL_NODE_AND_SETTERS(String);
 IMPL_NODE_AND_SETTERS(File);
 IMPL_NODE_AND_SETTERS(Color);
 IMPL_NODE_AND_SETTERS(ColorAlpha);
+
+// instantiate value setters
+
+namespace geode {
+    template struct SettingValueSetter<typename BoolSetting::ValueType>;
+    template struct SettingValueSetter<typename IntSetting::ValueType>;
+    template struct SettingValueSetter<typename FloatSetting::ValueType>;
+    template struct SettingValueSetter<typename StringSetting::ValueType>;
+    template struct SettingValueSetter<typename FileSetting::ValueType>;
+    template struct SettingValueSetter<typename ColorSetting::ValueType>;
+    template struct SettingValueSetter<typename ColorAlphaSetting::ValueType>;
+}
 
 // SettingChangedEvent
 

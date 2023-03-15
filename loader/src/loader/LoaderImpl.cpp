@@ -25,7 +25,7 @@
 #include <thread>
 #include <vector>
 
-USE_GEODE_NAMESPACE();
+using namespace geode::prelude;
 
 Loader::Impl* LoaderImpl::get() {
     return Loader::get()->m_impl.get();
@@ -41,6 +41,9 @@ void Loader::Impl::createDirectories() {
 #ifdef GEODE_IS_MACOS
     ghc::filesystem::create_directory(dirs::getSaveDir());
 #endif
+
+    // try deleting geode/unzipped if it already exists
+    try { ghc::filesystem::remove_all(dirs::getModRuntimeDir()); } catch(...) {}
 
     ghc::filesystem::create_directories(dirs::getGeodeResourcesDir());
     ghc::filesystem::create_directory(dirs::getModConfigDir());
@@ -135,7 +138,7 @@ VersionInfo Loader::Impl::getVersion() {
 }
 
 VersionInfo Loader::Impl::minModVersion() {
-    return VersionInfo { 1, 0, 0 };
+    return VersionInfo { 1, 0, 0, VersionTag(VersionTag::Beta, 5) };
 }
 
 VersionInfo Loader::Impl::maxModVersion() {
@@ -252,13 +255,13 @@ Mod* Loader::Impl::getInstalledMod(std::string const& id) const {
 }
 
 bool Loader::Impl::isModLoaded(std::string const& id) const {
-    return m_mods.count(id) && m_mods.at(id)->isLoaded();
+    return m_mods.count(id) && m_mods.at(id)->isLoaded() && m_mods.at(id)->isEnabled();
 }
 
 Mod* Loader::Impl::getLoadedMod(std::string const& id) const {
     if (m_mods.count(id)) {
         auto mod = m_mods.at(id);
-        if (mod->isLoaded()) {
+        if (mod->isLoaded() && mod->isEnabled()) {
             return mod;
         }
     }
@@ -270,7 +273,7 @@ void Loader::Impl::updateModResources(Mod* mod) {
         return;
     }
 
-    auto searchPath = dirs::getModRuntimeDir() / mod->getID() / "resources";
+    auto searchPath = mod->getResourcesDir();
 
     log::debug("Adding resources for {}", mod->getID());
 

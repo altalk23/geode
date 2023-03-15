@@ -12,7 +12,7 @@
 #include <mz_strm_mem.h>
 #include <mz_zip.h>
 
-USE_GEODE_NAMESPACE();
+using namespace geode::prelude;
 using namespace geode::utils::file;
 
 Result<std::string> utils::file::readString(ghc::filesystem::path const& path) {
@@ -115,6 +115,12 @@ Result<> utils::file::createDirectoryAll(ghc::filesystem::path const& path) {
 }
 
 Result<std::vector<ghc::filesystem::path>> utils::file::listFiles(
+    ghc::filesystem::path const& path, bool recursive
+) {
+    return file::readDirectory(path, recursive);
+}
+
+Result<std::vector<ghc::filesystem::path>> utils::file::readDirectory(
     ghc::filesystem::path const& path, bool recursive
 ) {
     if (!ghc::filesystem::exists(path)) {

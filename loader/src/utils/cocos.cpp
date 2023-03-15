@@ -2,7 +2,7 @@
 #include <Geode/utils/cocos.hpp>
 #include <json.hpp>
 
-USE_GEODE_NAMESPACE();
+using namespace geode::prelude;
 
 json::Value json::Serialize<ccColor3B>::to_json(ccColor3B const& color) {
     return json::Object {
@@ -328,6 +328,20 @@ CCScene* geode::cocos::switchToScene(CCLayer* layer) {
     scene->addChild(layer);
     CCDirector::get()->replaceScene(CCTransitionFade::create(.5f, scene));
     return scene;
+}
+
+CCPoint geode::cocos::getMousePos() {
+#ifdef GEODE_IS_WINDOWS
+    auto* director = CCDirector::get();
+    auto* gl = director->getOpenGLView();
+    auto winSize = director->getWinSize();
+    auto frameSize = gl->getFrameSize();
+    auto mouse = gl->getMousePosition() / frameSize;
+    return ccp(mouse.x, 1.f - mouse.y) * winSize;
+#else
+    // TODO: implement this for mac
+    return ccp(0, 0);
+#endif
 }
 
 static CreateLayerFunc LOADING_FINISHED_SCENE = nullptr;

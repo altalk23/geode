@@ -3,13 +3,13 @@
 #include <Geode/Bindings.hpp>
 #include <Geode/utils/cocos.hpp>
 
-USE_GEODE_NAMESPACE();
+using namespace geode::prelude;
 
 static constexpr int32_t GEODE_ID_PRIORITY = 0x100000;
 
-template<class T = CCNode>
+template <class T = CCNode>
     requires std::is_base_of_v<CCNode, T>
-T* setIDSafe(CCNode* node, int index, const char* id) {
+T* setIDSafe(CCNode* node, int index, char const* id) {
     if constexpr (std::is_same_v<CCNode, T>) {
         if (auto child = getChild(node, index)) {
             child->setID(id);
@@ -33,10 +33,13 @@ void setIDs(CCNode* node, int startIndex, Args... args) {
 }
 
 static void switchToMenu(CCNode* node, CCMenu* menu) {
+    if (!node || !menu) return;
+    
     auto worldPos = node->getParent()->convertToWorldSpace(node->getPosition());
 
     node->retain();
     node->removeFromParent();
+    node->setZOrder(0);
 
     menu->addChild(node);
     node->setPosition(menu->convertToNodeSpace(worldPos));
@@ -53,8 +56,18 @@ static void switchChildrenToMenu(CCNode* parent, CCMenu* menu, Args... args) {
     }
 }
 
-template <typename T, typename ...Args>
-static CCMenu* detachAndCreateMenu(CCNode* parent, const char* menuID, Layout* layout, T first, Args... args) {
+template <typename T, typename... Args>
+static CCMenu* detachAndCreateMenu(
+    CCNode* parent, char const* menuID, Layout* layout, T first, Args... args
+) {
+    if (!first) {
+        auto menu = CCMenu::create();
+        menu->setID(menuID);
+        menu->setLayout(layout);
+        parent->addChild(menu);
+        return menu;
+    }
+
     auto oldMenu = first->getParent();
 
     first->retain();
@@ -64,14 +77,25 @@ static CCMenu* detachAndCreateMenu(CCNode* parent, const char* menuID, Layout* l
     newMenu->setPosition(parent->convertToNodeSpace(oldMenu->convertToWorldSpace(first->getPosition())));
     newMenu->setID(menuID);
     newMenu->setZOrder(oldMenu->getZOrder());
-    newMenu->setLayout(layout);
     parent->addChild(newMenu);
 
     first->setPosition(0, 0);
+    first->setZOrder(0);
     newMenu->addChild(first);
     first->release();
 
     (switchToMenu(args, newMenu), ...);
+    
+    newMenu->setLayout(layout);
 
     return newMenu;
+}
+
+static CCSize getSizeSafe(CCNode* node) {
+    if (node) {
+        return node->getScaledContentSize();
+    }
+    else {
+        return CCSizeZero;
+    }
 }
