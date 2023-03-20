@@ -109,7 +109,7 @@ namespace codegen {
 
             return BindStatus::Binded;
         }
-
+        
         if (fb->type == FunctionType::Normal) {
             if (field.parent.rfind("fmod::", 0) == 0) return BindStatus::Binded;
             if (field.parent.rfind("cocos2d::", 0) == 0 && p == Platform::Windows)
