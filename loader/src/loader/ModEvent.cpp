@@ -13,7 +13,8 @@ Mod* ModStateEvent::getMod() const {
 }
 
 ListenerResult ModStateFilter::handle(utils::MiniFunction<Callback> fn, ModStateEvent* event) {
-    if (event->getMod() == m_mod && event->getType() == m_type) {
+    // log::debug("Event mod filter: {}, {}, {}, {}", m_mod, static_cast<int>(m_type), event->getMod(), static_cast<int>(event->getType()));
+    if ((!m_mod || event->getMod() == m_mod) && event->getType() == m_type) {
         fn(event);
     }
     return ListenerResult::Propagate;

@@ -289,6 +289,7 @@ bool Mod::Impl::hasSetting(std::string const& key) const {
 // Loading, Toggling, Installing
 
 Result<> Mod::Impl::loadBinary() {
+    log::debug("Loading binary for mod {}", m_info.id());
     if (m_binaryLoaded) {
         return Ok();
     }
@@ -305,6 +306,7 @@ Result<> Mod::Impl::loadBinary() {
     if (!res) {
         // make sure to free up the next mod mutex
         LoaderImpl::get()->releaseNextMod();
+        log::warn("Failed to load binary for mod {}: {}", m_info.id(), res.unwrapErr());
         return res;
     }
     m_binaryLoaded = true;
@@ -316,8 +318,11 @@ Result<> Mod::Impl::loadBinary() {
     });
 
     Loader::get()->updateAllDependencies();
-    Loader::get()->updateResources();
-
+    if (LoaderImpl::get()->m_isSetup) {
+        Loader::get()->updateResources(false);
+    }
+    
+    log::debug("Enabling mod {}", m_info.id());
     GEODE_UNWRAP(this->enable());
 
     return Ok();
@@ -364,6 +369,10 @@ Result<> Mod::Impl::enable() {
     }
 
     for (auto const& hook : m_hooks) {
+        if (!hook) {
+            log::warn("Hook is null in mod \"{}\"", m_info.name());
+            continue;
+        }
         if (hook->getAutoEnable()) {
             GEODE_UNWRAP(this->enableHook(hook));
         }
@@ -371,7 +380,8 @@ Result<> Mod::Impl::enable() {
 
     for (auto const& patch : m_patches) {
         if (!patch->apply()) {
-            return Err("Unable to apply patch at " + std::to_string(patch->getAddress()));
+            log::warn("Unable to apply patch at {}", patch->getAddress());
+            continue;
         }
     }
 
@@ -510,8 +520,7 @@ bool Mod::Impl::depends(std::string const& id) const {
 
 Result<> Mod::Impl::enableHook(Hook* hook) {
     auto res = hook->enable();
-    if (res) m_hooks.push_back(hook);
-    else {
+    if (!res) {
         log::error("Can't enable hook {} for mod {}: {}", hook->getDisplayName(), m_info.id(), res.unwrapErr());
     }
 
@@ -523,6 +532,7 @@ Result<> Mod::Impl::disableHook(Hook* hook) {
 }
 
 Result<Hook*> Mod::Impl::addHook(Hook* hook) {
+    m_hooks.push_back(hook);
     if (LoaderImpl::get()->isReadyToHook()) {
         if (hook->getAutoEnable()) {
             auto res = this->enableHook(hook);

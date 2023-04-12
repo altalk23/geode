@@ -108,14 +108,18 @@ void Loader::Impl::addSearchPaths() {
 }
 
 void Loader::Impl::updateResources() {
-    log::debug("Adding resources");
+    this->updateResources(true);
+}
 
-    // add own spritesheets
-    this->updateModResources(Mod::get());
+void Loader::Impl::updateResources(bool forceReload) {
+    log::debug("Adding resources");
 
     // add mods' spritesheets
     for (auto const& [_, mod] : m_mods) {
-        this->updateModResources(mod);
+        if (forceReload || !ModImpl::getImpl(mod)->m_resourcesLoaded) {
+            this->updateModResources(mod);
+            ModImpl::getImpl(mod)->m_resourcesLoaded = true;
+        }
     }
 }
 
@@ -521,9 +525,10 @@ void Loader::Impl::tryDownloadLoaderResources(
             // unzip resources zip
             auto unzip = file::Unzip::intoDir(tempResourcesZip, resourcesDir, true);
             if (!unzip) {
-                return ResourceDownloadEvent(
+                ResourceDownloadEvent(
                     UpdateFailed("Unable to unzip new resources: " + unzip.unwrapErr())
                 ).post();
+                return;
             }
             ResourceDownloadEvent(UpdateFinished()).post();
         })
@@ -649,9 +654,10 @@ void Loader::Impl::downloadLoaderUpdate(std::string const& url) {
             // unzip resources zip
             auto unzip = file::Unzip::intoDir(updateZip, targetDir, true);
             if (!unzip) {
-                return LoaderUpdateEvent(
+                LoaderUpdateEvent(
                     UpdateFailed("Unable to unzip update: " + unzip.unwrapErr())
                 ).post();
+                return;
             }
             m_isNewUpdateDownloaded = true;
             LoaderUpdateEvent(UpdateFinished()).post();
@@ -789,6 +795,7 @@ void Loader::Impl::provideNextMod(Mod* mod) {
 Mod* Loader::Impl::takeNextMod() {
     if (!m_nextMod) {
         m_nextMod = this->createInternalMod();
+        log::debug("Created internal mod {}", m_nextMod->getName());
     }
     auto ret = m_nextMod;
     return ret;
