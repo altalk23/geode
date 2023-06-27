@@ -1,5 +1,21 @@
 # Geode Changelog
 
+## v1.0.0
+ * Make JSON library exported (a2b8f27)
+ * Fix GLFW headers for Windows (6ada069)
+ * Add crashlog to MacOS (9b58b33)
+ * Implement a new updater / bootstrapper for Windows (b47870e)
+ * Don't download resources if the tag doesn't exist (991e714)
+ * Fix MacOS wine by using `std::filesystem::weakly_canonical` (46fab0e)
+
+## v1.0.0-beta.18
+ * Fix pickup bounds checks
+
+## v1.0.0-beta.17
+ * Fix `Mod::addHook` (372e2aa)
+ * Enable ANSI color support on Windows for logs (af8d4a0)
+ * Better unicode support for paths on Windows (a1e9ac4)
+
 ## v1.0.0-beta.16
  * Fix mod.json not loading because of broken working directory on MacOS (d7ccfde)
  * Fix markdown resources not updating between versions (b0cf6dc)

@@ -73,9 +73,14 @@ include(cmake/GeodeFile.cmake)
 include(cmake/Platform.cmake)
 include(cmake/CPM.cmake)
 
+if (PROJECT_IS_TOP_LEVEL AND NOT GEODE_BUILDING_DOCS)
+	set(MAT_JSON_AS_INTERFACE ON)
+endif()
 CPMAddPackage("gh:geode-sdk/json#19cf6f4")
 CPMAddPackage("gh:fmtlib/fmt#9.1.0")
 CPMAddPackage("gh:gulrak/filesystem#3e5b930")
+
+target_compile_definitions(${PROJECT_NAME} INTERFACE MAT_JSON_DYNAMIC=1)
 
 # this is needed for cross compilation on linux,
 # since fmtlib will fail to compile otherwise
@@ -117,6 +122,10 @@ file(GLOB CODEGEN_DEPENDS CONFIGURE_DEPENDS
 	${CMAKE_CURRENT_SOURCE_DIR}/codegen/src/*.hpp
 )
 
+if (NOT GEODE_BINDINGS_PATH)
+	set(GEODE_BINDINGS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/bindings)
+endif()
+
 file(GLOB CODEGEN_OUTPUTS CONFIGURE_DEPENDS 
 	${GEODE_CODEGEN_PATH}/Geode/binding/*.hpp
 )
@@ -124,7 +133,7 @@ file(GLOB CODEGEN_OUTPUTS CONFIGURE_DEPENDS
 add_custom_command(
 	DEPENDS ${CODEGEN_DEPENDS}
 	DEPENDS CodegenProject
-	COMMAND ${GEODE_CODEGEN_BINARY_OUT}/Codegen ${GEODE_TARGET_PLATFORM} bindings ${GEODE_CODEGEN_PATH}
+	COMMAND ${GEODE_CODEGEN_BINARY_OUT}/Codegen ${GEODE_TARGET_PLATFORM} ${GEODE_BINDINGS_PATH} ${GEODE_CODEGEN_PATH}
 	COMMAND echo codegen > ${GEODE_CODEGEN_PATH}/.stamp
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	COMMENT "Run Codegen"
