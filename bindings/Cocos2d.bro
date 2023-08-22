@@ -111,6 +111,7 @@ class cocos2d::CCDictionary {
 	auto objectForKey(gd::string const&) = mac 0x190870, ios 0x2de988;
 	auto removeAllObjects() = mac 0x190220;
 	auto removeObjectForKey(intptr_t) = mac 0x1921d0;
+	auto removeObjectForKey(gd::string const&) = mac 0x191d40;
 	auto setObject(cocos2d::CCObject*, intptr_t) = mac 0x191790, ios 0x2df734;
 	auto setObject(cocos2d::CCObject*, gd::string const&) = mac 0x190dc0, ios 0x2dee7c;
 	auto valueForKey(intptr_t) = mac 0x190cf0;
@@ -737,6 +738,7 @@ class cocos2d::CCRenderTexture {
 	static cocos2d::CCRenderTexture* create(int, int, cocos2d::CCTexture2DPixelFormat) = mac 0x35c720;
 	auto newCCImage(bool) = mac 0x35d7d0;
 	auto saveToFile(char const*) = mac 0x35dab0;
+	auto beginWithClear(float r, float g, float b, float a) = mac 0x35d010;
 }
 
 class cocos2d::CCRepeat {

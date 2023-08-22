@@ -139,7 +139,11 @@ struct CustomMenuLayer : Modify<CustomMenuLayer, MenuLayer> {
 
         // show crash info
         static bool shownLastCrash = false;
-        if (Loader::get()->didLastLaunchCrash() && !shownLastCrash) {
+        if (
+			Loader::get()->didLastLaunchCrash() &&
+			!shownLastCrash &&
+			!Mod::get()->template getSettingValue<bool>("disable-last-crashed-popup")
+		) {
             shownLastCrash = true;
             auto popup = createQuickPopup(
                 "Crashed",
@@ -198,17 +202,10 @@ struct CustomMenuLayer : Modify<CustomMenuLayer, MenuLayer> {
 	}
 
 	void onMissingTextures(CCObject*) {
-		static bool shownInfoPopup = false;
-		if (shownInfoPopup) {
-			return this->onGeode(nullptr);
-		}
-		shownInfoPopup = true;
-
+		
 	#ifdef GEODE_IS_DESKTOP
 
-		try {
-			ghc::filesystem::create_directories(dirs::getGeodeDir() / "update" / "resources");
-		} catch(...) {}
+		(void) utils::file::createDirectoryAll(dirs::getGeodeDir() / "update" / "resources");
 
 		createQuickPopup(
 			"Missing Textures",
@@ -218,7 +215,7 @@ struct CustomMenuLayer : Modify<CustomMenuLayer, MenuLayer> {
 			"and <cy>unzip its contents</c> into <cb>geode/update/resources</c>.\n"
 			"Afterwards, <cg>restart the game</c>.\n"
 			"You may also continue without installing resources, but be aware that "
-			"the game <cr>will crash</c>.",
+			"you won't be able to open <cr>the Geode menu</c>.",
 			"Dismiss", "Open Github",
 			[](auto, bool btn2) {
 				if (btn2) {

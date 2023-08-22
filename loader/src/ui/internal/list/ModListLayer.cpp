@@ -19,6 +19,10 @@
 #define FTS_FUZZY_MATCH_IMPLEMENTATION
 #include <Geode/external/fts/fts_fuzzy_match.h>
 
+#ifdef GEODE_IS_WINDOWS
+#include <filesystem>
+#endif
+
 static ModListType g_tab = ModListType::Installed;
 static ModListLayer* g_instance = nullptr;
 
@@ -95,33 +99,33 @@ static std::optional<int> queryMatch(ModListQuery const& query, Mod* mod) {
 static std::optional<int> queryMatch(ModListQuery const& query, IndexItemHandle item) {
     // if no force visibility was provided and item is already installed, don't 
     // show it
-    if (!query.forceVisibility && Loader::get()->isModInstalled(item->info.id())) {
+    if (!query.forceVisibility && Loader::get()->isModInstalled(item->getModInfo().id())) {
         return std::nullopt;
     }
     // make sure all tags match
     for (auto& tag : query.tags) {
-        if (!item->tags.count(tag)) {
+        if (!item->getTags().count(tag)) {
             return std::nullopt;
         }
     }
     // make sure at least some platform matches
     if (!ranges::contains(query.platforms, [item](PlatformID id) {
-        return item->download.platforms.count(id);
+        return item->getAvailablePlatforms().count(id);
     })) {
         return std::nullopt;
     }
     // otherwise match keywords
-    if (auto match = queryMatchKeywords(query, item->info)) {
+    if (auto match = queryMatchKeywords(query, item->getModInfo())) {
         auto weighted = match.value();
         // add extra weight on tag matches
         if (query.keywords) {
-            WEIGHTED_MATCH_ADD(ranges::join(item->tags, " "), 1.4);
+            WEIGHTED_MATCH_ADD(ranges::join(item->getTags(), " "), 1.4);
         }
         // add extra weight to featured items to keep power consolidated in the 
         // hands of the rich Geode bourgeoisie
         // the number 420 is a reference to the number one bourgeois of modern 
         // society, elon musk
-        weighted += item->isFeatured ? 420 : 0;
+        weighted += item->isFeatured() ? 420 : 0;
         return static_cast<int>(weighted);
     }
     // keywords must match bruh
@@ -322,11 +326,29 @@ bool ModListLayer::init() {
     m_featuredTabBtn->setTag(static_cast<int>(ModListType::Featured));
     m_menu->addChild(m_featuredTabBtn);
 
+    // tabs gradient
+    m_tabsGradientNode = CCClippingNode::create();
+    m_tabsGradientNode->setContentSize(this->getContentSize());
+    m_tabsGradientNode->setAnchorPoint({0.5f, 0.5f});
+    m_tabsGradientNode->ignoreAnchorPointForPosition(true);
+    m_tabsGradientNode->setZOrder(9);
+    m_tabsGradientNode->setInverted(false);
+    m_tabsGradientNode->setAlphaThreshold(0.f);
+
+    m_tabsGradientSprite = CCSprite::create("tab-gradient.png"_spr);
+    m_tabsGradientNode->addChild(m_tabsGradientSprite);
+
+    m_tabsGradientStencil = CCSprite::create("tab-gradient-mask.png"_spr);
+    m_tabsGradientStencil->setAnchorPoint({0.f, 0.f});
+    m_tabsGradientNode->setStencil(m_tabsGradientStencil);
+
     // add menus
     m_menu->setZOrder(0);
     m_topMenu->setZOrder(10);
 
     this->addChild(m_menu);
+    this->addChild(m_tabsGradientNode);
+    this->addChild(m_tabsGradientStencil);
     this->addChild(m_topMenu);
 
     // select first tab
@@ -470,6 +492,10 @@ void ModListLayer::reloadList(std::optional<ModListQuery> const& query) {
     m_list->setPosition(winSize / 2 - m_list->getScaledContentSize() / 2);
     this->addChild(m_list);
 
+    // position gradient sprite
+    if (m_tabsGradientSprite)
+        m_tabsGradientSprite->setPosition(m_list->getPosition() + CCPoint{179.f, 235.f});
+
     // add search input to list
     if (!m_searchInput) {
         this->createSearchControl();
@@ -602,7 +628,11 @@ void ModListLayer::onFilters(CCObject*) {
 }
 
 void ModListLayer::onOpenFolder(CCObject*) {
+#ifdef GEODE_IS_WINDOWS
+    file::openFolder(std::filesystem::canonical(dirs::getModsDir().wstring()).wstring());
+#else
     file::openFolder(ghc::filesystem::canonical(dirs::getModsDir()));
+#endif
 }
 
 void ModListLayer::onResetSearch(CCObject*) {
@@ -625,6 +655,8 @@ void ModListLayer::onTab(CCObject* pSender) {
             targetMenu->addChild(member);
             member->release();
         }
+        if (isSelected)
+            m_tabsGradientStencil->setPosition(member->m_onButton->convertToWorldSpace({0.f, -1.f}));
     };
 
     toggleTab(m_downloadTabBtn);

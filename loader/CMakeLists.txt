@@ -55,6 +55,7 @@ file(GLOB SOURCES CONFIGURE_DEPENDS
 	src/ui/internal/info/*.cpp
 	src/ui/internal/list/*.cpp
 	src/ui/internal/settings/*.cpp
+	hash/hash.cpp
 )
 
 # Obj-c sources
@@ -110,8 +111,8 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 make_directory("${GEODE_BIN_PATH}/nightly")
 
 # Prevent SDK from activating a loader build
-set_target_properties(${PROJECT_NAME} PROPERTIES 
-	PREFIX "" 
+set_target_properties(${PROJECT_NAME} PROPERTIES
+	PREFIX ""
 	OUTPUT_NAME "Geode"
 	# i'm going to say a slur that not a single soul has uttered in the last 200 years
 	LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO "${GEODE_BIN_PATH}/nightly"
@@ -140,6 +141,11 @@ package_geode_resources_now(
 	${CMAKE_CURRENT_SOURCE_DIR}/src/internal/resources.hpp
 )
 
+if (APPLE) 
+	# I don't care a single bit where to put this
+	file(COPY ${GEODE_LOADER_PATH}/include/link/libfmod.dylib DESTINATION ${GEODE_BIN_PATH}/nightly)
+endif()
+
 target_include_directories(${PROJECT_NAME} PRIVATE
 	src/
 	src/loader/
@@ -159,6 +165,8 @@ endif()
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC GEODE_EXPORTING MAT_JSON_EXPORTING)
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE _CRT_SECURE_NO_WARNINGS)
+
 # These are only needed for building source :-)
 if (NOT GEODE_BUILDING_DOCS)
 	# Markdown support
@@ -167,7 +175,30 @@ if (NOT GEODE_BUILDING_DOCS)
 	# Zip support (needed for in-memory streams, which zlib's minizip doesn't support)
 	set(MZ_LZMA Off CACHE INTERNAL "Enables LZMA & XZ compression")
 	set(MZ_ZSTD Off CACHE INTERNAL "")
-	CPMAddPackage("gh:zlib-ng/minizip-ng#cee6d8c")
+	set(MZ_OPENSSL Off CACHE INTERNAL "")
+	set(MZ_LIBBSD Off CACHE INTERNAL "")
+	set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
+	CPMAddPackage(
+		GITHUB_REPOSITORY zlib-ng/minizip-ng
+		GIT_TAG cee6d8c
+		OPTIONS "CMAKE_POLICY_DEFAULT_CMP0048 OLD"
+	)
+	set(CMAKE_WARN_DEPRECATED ON CACHE BOOL "" FORCE)
+
+	# Silence warnings from dependencies
+	include(CheckCXXCompilerFlag)
+	check_cxx_compiler_flag(-Wno-everything SUPPORTS_W_NO_EVERYTHING)
+	if (SUPPORTS_W_NO_EVERYTHING)
+		if (TARGET md4c)
+			target_compile_options(md4c PRIVATE -Wno-everything)
+		endif()
+		if (TARGET zlib)
+			target_compile_options(zlib PRIVATE -Wno-everything)
+		endif()
+		if (TARGET zlibstatic)
+			target_compile_options(zlibstatic PRIVATE -Wno-everything)
+		endif()
+	endif()
 
 	# Regex support
 	CPMAddPackage("gh:google/re2#954656f")
@@ -179,6 +210,19 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} z TulipHook geode-sdk mat-json)
 
+if (MSVC)
+	# Disable outputting .exp file
+	include(CheckLinkerFlag)
+	check_linker_flag(CXX /NOEXP SUPPORTS_NOEXP)
+	if (SUPPORTS_NOEXP)
+		target_link_options(${PROJECT_NAME} PRIVATE /NOEXP)
+	endif()
+
+	# Disable incremental link in CI builds
+	if (DEFINED ENV{GEODE_CI})
+		target_link_options(${PROJECT_NAME} PRIVATE /INCREMENTAL:NO)
+	endif()
+endif()
 
 # Use precompiled headers for faster builds
 if (NOT GEODE_DISABLE_PRECOMPILED_HEADERS)
@@ -194,7 +238,7 @@ if (NOT GEODE_DISABLE_PRECOMPILED_HEADERS)
 endif()
 
 # Create launcher
-if (APPLE) 
+if (APPLE)
 	set_target_properties(geode-loader PROPERTIES 
 		SYSTEM_NAME MacOS
 		OSX_DEPLOYMENT_TARGET 10.9
@@ -205,17 +249,17 @@ if (APPLE)
 
 	if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm" OR GEODE_TARGET_PLATFORM STREQUAL "iOS")
 		add_custom_command(TARGET geode-loader
-		    POST_BUILD COMMAND 
-		    ${CMAKE_INSTALL_NAME_TOOL} -id \"/Library/MobileSubstrate/DynamicLibraries/Geode.dylib\"
-		    $<TARGET_FILE:geode-loader>)
+			POST_BUILD COMMAND
+			${CMAKE_INSTALL_NAME_TOOL} -id \"/Library/MobileSubstrate/DynamicLibraries/Geode.dylib\"
+			$<TARGET_FILE:geode-loader>)
 	endif()
 elseif (WIN32)
 	add_subdirectory(launcher/windows)
 
 	target_link_libraries(${PROJECT_NAME} dbghelp)
 
-	# disable warnings about CCNode::setID
 	if (MSVC)
+		# disable warnings about CCNode::setID
 		target_link_options(${PROJECT_NAME} PUBLIC /ignore:4217)
 	endif()
 endif()

@@ -91,8 +91,7 @@ bool ModInfoPopup::init(ModInfo const& info, ModListLayer* list) {
     versionLabel->setColor({0, 255, 0});
     m_mainLayer->addChild(versionLabel);
 
-    CCDirector::sharedDirector()->getTouchDispatcher()->incrementForcePrio(2);
-    this->registerWithTouchDispatcher();
+    this->setTouchEnabled(true);
 
     m_detailsArea = MDTextArea::create(
         (info.details() ? info.details().value() : "### No description provided."),
@@ -225,7 +224,7 @@ void ModInfoPopup::onChangelog(CCObject* sender) {
     auto winSize = CCDirector::get()->getWinSize();
 
     if (!m_changelogArea) {
-        m_changelogArea = MDTextArea::create(Mod::get()->getModInfo().changelog().value(), { 350.f, 137.5f });
+        m_changelogArea = MDTextArea::create(this->getModInfo().changelog().value(), { 350.f, 137.5f });
         m_changelogArea->setPosition(
             -5000.f, winSize.height / 2 - m_changelogArea->getScaledContentSize().height / 2 - 20.f
         );
@@ -291,7 +290,7 @@ LocalModInfoPopup::LocalModInfoPopup()
 bool LocalModInfoPopup::init(Mod* mod, ModListLayer* list) {
     m_item = Index::get()->getMajorItem(mod->getModInfo().id());
     if (m_item)
-        m_installListener.setFilter(m_item->info.id());
+        m_installListener.setFilter(m_item->getModInfo().id());
     m_mod = mod;
 
     if (!ModInfoPopup::init(mod->getModInfo(), list)) return false;
@@ -383,10 +382,10 @@ bool LocalModInfoPopup::init(Mod* mod, ModListLayer* list) {
 
             // TODO: use column layout here?
 
-            if (m_item->info.version().getMajor() > minorIndexItem->info.version().getMajor()) {
+            if (m_item->getModInfo().version().getMajor() > minorIndexItem->getModInfo().version().getMajor()) {
                 // has major update
                 m_latestVersionLabel = CCLabelBMFont::create(
-                    ("Available: " + m_item->info.version().toString()).c_str(),
+                    ("Available: " + m_item->getModInfo().version().toString()).c_str(),
                     "bigFont.fnt"
                 );
                 m_latestVersionLabel->setScale(.35f);
@@ -396,10 +395,10 @@ bool LocalModInfoPopup::init(Mod* mod, ModListLayer* list) {
                 m_mainLayer->addChild(m_latestVersionLabel);
             }
 
-            if (minorIndexItem->info.version() > mod->getModInfo().version()) {
+            if (minorIndexItem->getModInfo().version() > mod->getModInfo().version()) {
                 // has minor update
                 m_minorVersionLabel = CCLabelBMFont::create(
-                    ("Available: " + minorIndexItem->info.version().toString()).c_str(),
+                    ("Available: " + minorIndexItem->getModInfo().version().toString()).c_str(),
                     "bigFont.fnt"
                 );
                 m_minorVersionLabel->setScale(.35f);
@@ -517,7 +516,8 @@ void LocalModInfoPopup::onUpdate(CCObject*) {
                     [](IndexItemHandle handle) {
                         return fmt::format(
                             " - <cr>{}</c> (<cy>{}</c>)",
-                            handle->info.name(), handle->info.id()
+                            handle->getModInfo().name(),
+                            handle->getModInfo().id()
                         );
                     }
                 ),
@@ -684,11 +684,11 @@ IndexItemInfoPopup::IndexItemInfoPopup()
 
 bool IndexItemInfoPopup::init(IndexItemHandle item, ModListLayer* list) {
     m_item = item;
-    m_installListener.setFilter(m_item->info.id());
+    m_installListener.setFilter(m_item->getModInfo().id());
 
     auto winSize = CCDirector::sharedDirector()->getWinSize();
 
-    if (!ModInfoPopup::init(item->info, list)) return false;
+    if (!ModInfoPopup::init(item->getModInfo(), list)) return false;
 
     m_installBtnSpr = IconButtonSprite::create(
         "GE_button_01.png"_spr,
@@ -771,7 +771,8 @@ void IndexItemInfoPopup::onInstall(CCObject*) {
                     [](IndexItemHandle handle) {
                         return fmt::format(
                             " - <cr>{}</c> (<cy>{}</c>)",
-                            handle->info.name(), handle->info.id()
+                            handle->getModInfo().name(),
+                            handle->getModInfo().id()
                         );
                     }
                 ),
@@ -812,7 +813,7 @@ CCNode* IndexItemInfoPopup::createLogo(CCSize const& size) {
 }
 
 ModInfo IndexItemInfoPopup::getModInfo() const {
-    return m_item->info;
+    return m_item->getModInfo();
 }
 
 IndexItemInfoPopup* IndexItemInfoPopup::create(

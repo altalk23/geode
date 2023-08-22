@@ -34,13 +34,15 @@ if (NOT ${GEODE_VERSION_HAS_TAG} EQUAL "-1")
 	string(SUBSTRING ${GEODE_VERSION_TAG_TYPE} 0 1 FIRST_LETTER)
 	string(TOUPPER ${FIRST_LETTER} FIRST_LETTER)
 	string(REGEX REPLACE "^.(.*)" "${FIRST_LETTER}\\1" GEODE_VERSION_TAG_TYPE "${GEODE_VERSION_TAG_TYPE}")
+
+	message(STATUS "Version: ${GEODE_VERSION}, tag: ${GEODE_VERSION_TAG} (type: ${GEODE_VERSION_TAG_TYPE}, number: ${GEODE_VERSION_TAG_NUMBER})")
 else()
 	set(GEODE_VERSION_TAG "")
 	set(GEODE_VERSION_TAG_TYPE "")
 	set(GEODE_VERSION_TAG_NUMBER "")
-endif()
 
-message(STATUS "Version: ${GEODE_VERSION}, tag: ${GEODE_VERSION_TAG} (type: ${GEODE_VERSION_TAG_TYPE}, number: ${GEODE_VERSION_TAG_NUMBER})")
+	message(STATUS "Version: ${GEODE_VERSION}")
+endif()
 
 project(geode-sdk VERSION ${GEODE_VERSION} LANGUAGES CXX C)
 
@@ -76,7 +78,7 @@ include(cmake/CPM.cmake)
 if (PROJECT_IS_TOP_LEVEL AND NOT GEODE_BUILDING_DOCS)
 	set(MAT_JSON_AS_INTERFACE ON)
 endif()
-CPMAddPackage("gh:geode-sdk/json#19cf6f4")
+CPMAddPackage("gh:geode-sdk/json#a47f570")
 CPMAddPackage("gh:fmtlib/fmt#9.1.0")
 CPMAddPackage("gh:gulrak/filesystem#3e5b930")
 
@@ -93,8 +95,18 @@ endif()
 if (PROJECT_IS_TOP_LEVEL AND NOT GEODE_BUILDING_DOCS)
 	set(TULIP_LINK_SOURCE ON)
 endif()
-CPMAddPackage("gh:geode-sdk/TulipHook#4369d05")
+set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
+CPMAddPackage("gh:geode-sdk/TulipHook#f77ccbe")
+set(CMAKE_WARN_DEPRECATED ON CACHE BOOL "" FORCE)
 
+# Silence warnings from dependencies
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag(-Wno-everything SUPPORTS_W_NO_EVERYTHING)
+if (SUPPORTS_W_NO_EVERYTHING)
+	if (TARGET capstone)
+		target_compile_options(capstone PRIVATE -Wno-everything)
+	endif()
+endif()
 
 target_sources(${PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/entry.cpp)
 
@@ -111,7 +123,11 @@ ExternalProject_Add(CodegenProject
 	# manually set configure command as to not inherit generator used by geode,
 	# this should hopefully fix generator cache mismatch between different projects, however
 	# it causes a warning to be shown every time. if you know a better solution please tell us ok thx
-	CONFIGURE_COMMAND ${CMAKE_COMMAND} ${GEODE_CODEGEN_CMAKE_ARGS} -DCMAKE_INSTALL_PREFIX:STRING=${GEODE_CODEGEN_BINARY_OUT} -S <SOURCE_DIR> -B <BINARY_DIR>
+	CONFIGURE_COMMAND ${CMAKE_COMMAND} ${GEODE_CODEGEN_CMAKE_ARGS} -DCMAKE_INSTALL_PREFIX:STRING=${GEODE_CODEGEN_BINARY_OUT}
+		-DCMAKE_C_COMPILER_LAUNCHER=${CMAKE_C_COMPILER_LAUNCHER} -DCMAKE_CXX_COMPILER_LAUNCHER=${CMAKE_CXX_COMPILER_LAUNCHER}
+		-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+		-S <SOURCE_DIR> -B <BINARY_DIR>
+	BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --config $<CONFIGURATION>
 	INSTALL_COMMAND ${CMAKE_COMMAND} --install <BINARY_DIR> --config $<CONFIGURATION>
 )
 

@@ -1,5 +1,31 @@
 # Geode Changelog
 
+## v1.1.0
+ * Fix json library not actually being dynamically exported/imported (5f65d97)
+ * Update TulipHook, gets rid of keystone dependency and adds stdcall support (efcbf58, 7b90903)
+ * Make resources.zip platform dependent (e41784e)
+
+## v1.0.3
+ * Fix mod changelogs only showing Geode's own changelog (2945422)
+ * Fix some filesystem functions for Geode running under wine (7a83354)
+ * Lazy load the real XInput9 dll, removing the need for an XInput 1.3 (041d44c)
+ * Fix MacOS requiring openssl@3 directly from homebrew (e489681)
+ * Default to Steam installation on MacOS installer (072a18c)
+ * Implement uninstaller for MacOS (072a18c)
+
+## v1.0.2
+ * Fix auto-updating (1f7e6da)
+
+## v1.0.1
+ * New textures for list tabs (8ce1227)
+ * Switch libraries for SHA3 256 (bbf2608)
+ * Fix MacOS installer (ea5a5f0)
+ * Add mod ids to deprecated keys logs of ModInfo (fc72c24)
+ * Rename platform labels: (MacOS -> macOS, iOS -> IOS) (cf3ed32)
+ * Fix Geode not loading when GeodeBootsrapper.dll exists (c2aacd9)
+ * Hide tag from version in cmake when it doesnt exist (fc8a8e1)
+ * Change MacOS installer fmod original name for compatibility with the old installer (44d5aff)
+
 ## v1.0.0
  * Make JSON library exported (a2b8f27)
  * Fix GLFW headers for Windows (6ada069)
@@ -7,6 +33,11 @@
  * Implement a new updater / bootstrapper for Windows (b47870e)
  * Don't download resources if the tag doesn't exist (991e714)
  * Fix MacOS wine by using `std::filesystem::weakly_canonical` (46fab0e)
+ * Make the Index pimpl aswell as remove ability for multiple sources (7a0ade2)
+ * All mods including disabled ones are now always unzipped in order to load their logos (0a6d31e)
+ * Add IDs and layouts for `CustomizeObjectLayer` (6d92bb8, 138fdbb, f8da816)
+ * Add option to disable the Last Crashed popup (e00b3a6)
+ * Fix `SpacerNode` not actually taking up any space (8ca2b99)
 
 ## v1.0.0-beta.18
  * Fix pickup bounds checks
