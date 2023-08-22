@@ -82,7 +82,9 @@ CPMAddPackage("gh:geode-sdk/json#a47f570")
 CPMAddPackage("gh:fmtlib/fmt#9.1.0")
 CPMAddPackage("gh:gulrak/filesystem#3e5b930")
 
-target_compile_definitions(${PROJECT_NAME} INTERFACE MAT_JSON_DYNAMIC=1)
+if (NOT GEODE_WINDOWS_STANDALONE)
+	target_compile_definitions(${PROJECT_NAME} INTERFACE MAT_JSON_DYNAMIC=1)
+endif()
 
 # this is needed for cross compilation on linux,
 # since fmtlib will fail to compile otherwise
