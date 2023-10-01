@@ -52,7 +52,6 @@ namespace geode {
          * Settings save data. Stored for efficient loading of custom settings
          */
         json::Value m_savedSettingsData = json::Object();
-
         /**
          * Whether the mod resources are loaded or not
          */
@@ -121,7 +120,7 @@ namespace geode {
         Result<> unpatch(Patch* patch);
         Result<> enable();
         Result<> disable();
-        Result<> uninstall();
+        Result<> uninstall(bool deleteSaveData);
         bool isUninstalled() const;
 
         // 1.3.0 additions
@@ -137,6 +136,11 @@ namespace geode {
 
         char const* expandSpriteName(char const* name);
         ModJson getRuntimeInfo() const;
+
+        bool isLoggingEnabled() const;
+        void setLoggingEnabled(bool enabled);
+
+        bool shouldLoad() const;
     };
 
     class ModImpl : public Mod::Impl {

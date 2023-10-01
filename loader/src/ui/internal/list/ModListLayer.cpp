@@ -646,7 +646,7 @@ void ModListLayer::onExpand(CCObject* sender) {
     m_display = static_cast<CCMenuItemToggler*>(sender)->isToggled() ?
         ModListDisplay::Concise :
         ModListDisplay::Expanded;
-    this->reloadList();
+    this->reloadList(false);
 }
 
 void ModListLayer::onFilters(CCObject*) {
