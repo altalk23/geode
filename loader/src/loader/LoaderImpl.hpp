@@ -13,7 +13,6 @@
 #include <Geode/utils/ranges.hpp>
 #include <Geode/utils/MiniFunction.hpp>
 #include "ModImpl.hpp"
-#include <about.hpp>
 #include <crashlog.hpp>
 #include <mutex>
 #include <optional>
@@ -158,7 +157,7 @@ namespace geode {
 
         json::Value processRawIPC(void* rawHandle, std::string const& buffer);
 
-        void queueInGDThread(ScheduledFunction func);
+        void queueInMainThread(ScheduledFunction func);
         void executeGDThreadQueue();
 
         void logConsoleMessage(std::string const& msg);

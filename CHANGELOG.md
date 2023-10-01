@@ -1,5 +1,63 @@
 # Geode Changelog
 
+## v1.3.5
+ * Follow redirect in web::utils functions (a942a45)
+ * Lots of bindings
+ * Make codegen symbols private visibility (696a2ca)
+ * Add deadstrip to macos (0d62940)
+ * Readd the nullptr check in InstallListPopup::createCells (499f256)
+ * Fix garagelayer ids on not logged in users (dd0179c)
+
+## v1.3.4
+ * Implement string setting character filters (cf8fbba)
+ * Update bindings
+
+## v1.3.3
+ * Reunify resources.zip (81de161)
+
+## v1.3.2
+ * Fix alignment of some textures (8f39c38)
+ * Bring back unknown problems (0663569)
+ * Fix some Windows 7 incompatibility (2d2bdd1)
+ * Remove enabled from the crashlogs (5b7d318)
+ * Make index unzipping async (7c582f1)
+ * Fix mods by developer crashing when mod was toggled (a6a47bf)
+ * Fix nested lists in the markdown (2723588)
+ * Fix search paths (8f39c38, aa55ebe)
+
+## v1.3.1
+ * Fix TulipHook not relocating RIP relative operands on MacOS (6cad19d)
+
+## v1.3.0
+ * Completely remove runtime enabling & disabling of mods (d817749)
+ * Patches auto enabling can be disabled (69821f3)
+ * Move ModEventType::Loaded to after hooks & patches are enabled (23c3095)
+ * Update index to be able to store multiple versions of the same mod (5572f9c)
+ * Implement UI for selection of downloading specific mod versions (5d15eb0)
+ * Change install & uninstall popups to reflect the new changes (d40f467)
+ * Keep the scroll when enabling, installing etc. a mod (b3d444a)
+ * Update MacOS crashlog to include base and offset (7816c43)
+ * Add user agent to AsyncWebRequest (c256207)
+ * Add post and custom requests to AsyncWebRequest (c256207)
+
+## v1.2.1
+ * Mods now target macOS 10.13 instead of 10.14 (7cc1cd4)
+ * Fix CustomizeObjectLayer ids moving around when multiple objects are selected (9ee0994, 87749d4)
+ * Fix Windows uninstaller trying to uninstall from parent directory instead of current (bcb8a6f)
+ * Fix search paths on reload (65b4364)
+ * Fix search paths missing for mods without spritesheets (e78eaf0)
+ * Fix dependencies getting installed again when they're already installed (4f2835a)
+
+## v1.2.0
+ * Add Objective-C hooking utilities (a31d072)
+ * Rename queueInGDThread to queueInMainThread (277f68b)
+ * Fix build on apple silicon (dd16797)
+ * Move windows uninstaller to gd folder (bdf11a2)
+ * Option to pick features on windows installer (4cc9164)
+ * Improve lag in some places due to search paths (9875f5d)
+ * Some missing methods for macOS gd::map (db02c3d)
+ * Some missing methods for windows gd::string (7139ac4)
+
 ## v1.1.1
  * Improve installation confirmation popup (9192769)
  * Remove unnecessary main thread queues for mod events (38cc38c)

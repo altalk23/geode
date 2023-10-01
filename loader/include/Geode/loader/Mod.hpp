@@ -33,6 +33,13 @@ namespace geode {
         ~HandleToSaved();
     };
 
+    enum class ModRequestedAction {
+        None,
+        Enable,
+        Disable,
+        Uninstall,
+    };
+
     GEODE_HIDDEN Mod* takeNextLoaderMod();
 
     class ModImpl;
@@ -78,14 +85,14 @@ namespace geode {
         ghc::filesystem::path getPackagePath() const;
         VersionInfo getVersion() const;
         bool isEnabled() const;
-        bool isLoaded() const;
+        [[deprecated("use isEnabled instead")]] bool isLoaded() const;
         bool supportsDisabling() const;
-        bool canDisable() const;
-        bool canEnable() const;
+        [[deprecated("always true")]] bool canDisable() const;
+        [[deprecated("always true")]] bool canEnable() const;
         bool needsEarlyLoad() const;
-        [[deprecated]] bool supportsUnloading() const;
-        [[deprecated("use wasSuccessfullyLoaded instead")]] bool wasSuccesfullyLoaded() const;
-        bool wasSuccessfullyLoaded() const;
+        [[deprecated("always false")]] bool supportsUnloading() const;
+        [[deprecated("use isEnabled instead")]] bool wasSuccesfullyLoaded() const;
+        [[deprecated("use isEnabled instead")]] bool wasSuccessfullyLoaded() const;
         [[deprecated("use getMetadata instead")]] ModInfo getModInfo() const;
         ModMetadata getMetadata() const;
         ghc::filesystem::path getTempDir() const;
@@ -337,6 +344,8 @@ namespace geode {
         Result<> uninstall();
         bool isUninstalled() const;
 
+        ModRequestedAction getRequestedAction() const;
+
         /**
          * Check whether or not this Mod
          * depends on another mod
@@ -389,6 +398,6 @@ namespace geode {
     };
 }
 
-inline char const* operator"" _spr(char const* str, size_t) {
+GEODE_HIDDEN inline char const* operator"" _spr(char const* str, size_t) {
     return geode::Mod::get()->expandSpriteName(str);
 }
