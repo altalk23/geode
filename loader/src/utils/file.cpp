@@ -286,6 +286,8 @@ public:
     Result<> extractAt(Path const& dir, Path const& name) {
         auto entry = m_entries.at(name);
 
+        log::debug("Extracting {} to {}", name, dir);
+
         GEODE_UNWRAP(
             mzTry(mz_zip_entry_read_open(m_handle, 0, nullptr))
             .expect("Unable to open entry (code {error})")
@@ -293,6 +295,9 @@ public:
 
         // if the file is empty, its data is empty (duh)
         if (!entry.uncompressedSize) {
+            log::debug("Entry {} is empty", name);
+            mz_zip_entry_close(m_handle);
+            GEODE_UNWRAP(file::writeBinary(dir / name, ByteVector()));
             return Ok();
         }
 
@@ -338,10 +343,16 @@ public:
             if (!ghc::filesystem::relative(dir / filePath, dir).empty()) {
 #endif
                 if (m_entries.at(filePath).isDirectory) {
-                    GEODE_UNWRAP(file::createDirectoryAll(dir / filePath));
+                    auto res = file::createDirectoryAll(dir / filePath);
+                    if (!res) {
+                        log::error("Unable to create directory {}: {}", dir / filePath, res.unwrapErr());
+                    }
                 }
                 else {
-                    GEODE_UNWRAP(this->extractAt(dir, filePath));
+                    auto res = this->extractAt(dir, filePath);
+                    if (!res) {
+                        log::error("Unable to extract {}: {}", filePath, res.unwrapErr());
+                    }
                 }
             }
             else {
