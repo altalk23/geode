@@ -79,14 +79,17 @@ include(cmake/CPM.cmake)
 if (NOT DEFINED GEODE_GD_VERSION)
 	if (${GEODE_TARGET_PLATFORM} STREQUAL "Win32")
 		set(GEODE_GD_VERSION 2.204)
+		set(GEODE_COMP_GD_VERSION 22040)
 	elseif (${GEODE_TARGET_PLATFORM} STREQUAL "Android32" OR ${GEODE_TARGET_PLATFORM} STREQUAL "Android64")
 		set(GEODE_GD_VERSION 2.205)
+		set(GEODE_COMP_GD_VERSION 22050)
 	else()
 		set(GEODE_GD_VERSION 2.200)
+		set(GEODE_COMP_GD_VERSION 22000)
 	endif()
 endif()
 
-target_compile_definitions(${PROJECT_NAME} INTERFACE GEODE_GD_VERSION=${GEODE_GD_VERSION})
+target_compile_definitions(${PROJECT_NAME} INTERFACE GEODE_GD_VERSION=${GEODE_GD_VERSION} GEODE_COMP_GD_VERSION=${GEODE_COMP_GD_VERSION})
 
 if (WIN32)
 	# This allows you to compile in debug mode
@@ -113,7 +116,7 @@ if (PROJECT_IS_TOP_LEVEL AND NOT GEODE_BUILDING_DOCS)
 	set(TULIP_LINK_SOURCE ON)
 endif()
 set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
-CPMAddPackage("gh:geode-sdk/TulipHook#70122be")
+CPMAddPackage("gh:geode-sdk/TulipHook#dbec0c7")
 set(CMAKE_WARN_DEPRECATED ON CACHE BOOL "" FORCE)
 
 # Silence warnings from dependencies
