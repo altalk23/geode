@@ -332,6 +332,8 @@ public:
                 return Err("Unable to get entry info");
             }
 
+            log::debug("Extracting {}", info->filename);
+
             Path filePath;
             filePath.assign(info->filename, info->filename + info->filename_size);
 
@@ -344,6 +346,7 @@ public:
 #endif
                 if (m_entries.at(filePath).isDirectory) {
                     auto res = file::createDirectoryAll(dir / filePath);
+                    log::debug("Creating directory {}: {}", dir / filePath, res.unwrapErr());
                     if (!res) {
                         log::error("Unable to create directory {}: {}", dir / filePath, res.unwrapErr());
                     }
