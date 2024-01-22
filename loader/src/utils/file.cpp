@@ -346,7 +346,7 @@ public:
 #endif
                 if (m_entries.at(filePath).isDirectory) {
                     auto res = file::createDirectoryAll(dir / filePath);
-                    log::debug("Creating directory {}: {}", dir / filePath, res.unwrapErr());
+                    log::debug("Creating directory {}", dir / filePath);
                     if (!res) {
                         log::error("Unable to create directory {}: {}", dir / filePath, res.unwrapErr());
                     }
