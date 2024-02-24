@@ -1013,14 +1013,20 @@ public:
         geode::utils::MiniFunction<typename Filter::Callback> callback,
         Args&&... args
     ) {
-        return nullptr;
+        auto listener = new geode::EventListener<Filter>(
+            callback, Filter(this, std::forward<Args>(args)...)
+        );
+        this->addEventListenerInternal(id, listener);
+        return listener;
     }
     template <class Filter, class... Args>
     geode::EventListenerProtocol* addEventListener(
         geode::utils::MiniFunction<typename Filter::Callback> callback,
         Args&&... args
     ) {
-        return nullptr;
+        return this->template addEventListener<Filter, Args...>(
+            "", callback, std::forward<Args>(args)...
+        );
     }
     GEODE_DLL void removeEventListener(geode::EventListenerProtocol* listener);
     GEODE_DLL void removeEventListener(std::string const& id);
