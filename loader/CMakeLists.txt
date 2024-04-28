@@ -267,6 +267,8 @@ if (MSVC)
 	endif()
 endif()
 
+target_link_options(${PROJECT_NAME} PRIVATE --no_demangle)
+
 if (WIN32)
 	# allows forward compat on windows
 	if (MSVC)
